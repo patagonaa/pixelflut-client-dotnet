@@ -37,5 +37,18 @@ namespace PixelFlut.Infrastructure
             msg += "\n";
             _socket.Send(Encoding.UTF8.GetBytes(msg));
         }
+
+        public Size GetSize()
+        {
+            var bytes = new byte[1000];
+
+            _socket.Send(Encoding.UTF8.GetBytes("SIZE\n"));
+
+            int receivedBytes = _socket.Receive(bytes);
+
+            var str = Encoding.UTF8.GetString(bytes, 0, receivedBytes);
+            var split = str.Split(' ');
+            return new Size(int.Parse(split[1]), int.Parse(split[2]));
+        }
     }
 }

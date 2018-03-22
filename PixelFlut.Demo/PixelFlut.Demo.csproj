@@ -8,5 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="../PixelFlut.Infrastructure/PixelFlut.Infrastructure.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0002" />
+  </ItemGroup>
 
 </Project>
