@@ -113,17 +113,10 @@ namespace PixelFlut.Infrastructure
         {
             if (!this.initialized)
                 throw new InvalidOperationException("not initialized!");
-            var tickSw = Stopwatch.StartNew();
             TickInternal();
-            tickSw.Stop();
-            Console.WriteLine($"Tick: {tickSw.ElapsedTicks} Ticks");
-
             Counter++;
-            var toListSw = Stopwatch.StartNew();
             var pixels = this.pixels.ToList();
             this.pixels.Clear();
-            toListSw.Stop();
-            Console.WriteLine($"ToList: {toListSw.ElapsedTicks} Ticks");
             return pixels;
         }
 
@@ -174,7 +167,6 @@ namespace PixelFlut.Infrastructure
             var maxOffsetY = CanvasSize.Height - boxSize.Height;
 
             var color = Color.FromArgb((int)(random.Next() | 0xFF000000));
-
             var offsetX = this.random.Next(0, maxOffsetX);
             var offsetY = this.random.Next(0, maxOffsetY);
 
@@ -232,9 +224,16 @@ namespace PixelFlut.Infrastructure
             }
         }
 
+        private byte[] buffer = null;
+
         public byte[] PreRender(IList<OutputPixel> pixels)
         {
-            using (var ms = new MemoryStream(16 * pixels.Count))
+            if ((buffer?.Length ?? 0) < pixels.Count * 20)
+            {
+                buffer = new byte[pixels.Count * 20];
+            }
+
+            using (var ms = new MemoryStream(buffer))
             {
                 using (var sw = new StreamWriter(ms))
                 {
@@ -247,11 +246,22 @@ namespace PixelFlut.Infrastructure
                         }
                         else
                         {
-                            sw.WriteLine($"PX {pixel.Point.X} {pixel.Point.Y} {pixel.Color.R:X2}{pixel.Color.G:X2}{pixel.Color.B:X2}");
+                            sw.Write($"PX ");
+                            sw.Write(pixel.Point.X);
+                            sw.Write(" ");
+                            sw.Write(pixel.Point.Y);
+                            sw.Write(" ");
+                            sw.Write(pixel.Color.R.ToString("X2"));
+                            sw.Write(pixel.Color.G.ToString("X2"));
+                            sw.Write(pixel.Color.B.ToString("X2"));
+                            sw.WriteLine();
                         }
                     }
+                    sw.Flush();
+                    var toReturn = new byte[ms.Position];
+                    Array.Copy(this.buffer, toReturn, ms.Position);
+                    return toReturn;
                 }
-                return ms.ToArray();
             }
         }
 
