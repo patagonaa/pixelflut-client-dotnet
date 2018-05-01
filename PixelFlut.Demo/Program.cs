@@ -13,6 +13,7 @@ using Rgba32Image = SixLabors.ImageSharp.Image<SixLabors.ImageSharp.Rgba32>;
 using ImageExtensions = SixLabors.ImageSharp.ImageExtensions;
 using System.Net.Sockets;
 using System.Diagnostics;
+using PixelFlut.Infrastructure.Effects;
 
 namespace PixelFlut.Demo
 {
