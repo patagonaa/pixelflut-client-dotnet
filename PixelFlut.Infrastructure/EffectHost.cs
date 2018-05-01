@@ -17,11 +17,13 @@ namespace PixelFlut.Infrastructure
         private IEffect effect;
         private object effectLock = new object();
 
+        private Thread effectThread;
         private Thread renderThread;
         private Thread outputThread;
         private CancellationTokenSource cancellationTokenSource;
         private readonly IRenderOutputService<TRendered> outputService;
 
+        private ConcurrentQueue<IList<OutputPixel>> effectQueue = new ConcurrentQueue<IList<OutputPixel>>();
         private ConcurrentQueue<TRendered> renderedQueue = new ConcurrentQueue<TRendered>();
 
         public EffectHost(IRenderOutputService<TRendered> outputService)
@@ -33,6 +35,9 @@ namespace PixelFlut.Infrastructure
         {
             this.cancellationTokenSource = new CancellationTokenSource();
 
+            this.effectThread = new Thread(Effect);
+            this.effectThread.Start();
+
             this.renderThread = new Thread(Render);
             this.renderThread.Start();
 
@@ -43,8 +48,51 @@ namespace PixelFlut.Infrastructure
         public void Stop()
         {
             cancellationTokenSource?.Cancel();
+            effectThread?.Join();
             renderThread?.Join();
             outputThread?.Join();
+        }
+
+        private void Effect()
+        {
+            while (!cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                if (this.effectQueue.Count < 100)
+                {
+                    IList<OutputPixel> pixels;
+                    lock (this.effectLock)
+                    {
+                        pixels = this.effect.GetPixels();
+                    }
+                    this.effectQueue.Enqueue(pixels);
+                }
+                else
+                {
+                    Thread.Sleep(100);
+                }
+            }
+        }
+
+        private void Render()
+        {
+            while (!cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                IList<OutputPixel> pixels;
+                if (this.renderedQueue.Count < 100)
+                {
+                    if(!this.effectQueue.TryDequeue(out pixels)){
+                        Console.WriteLine("render buffer empty!");
+                        continue;
+                    }
+
+                    var rendered = this.outputService.PreRender(pixels);
+                    this.renderedQueue.Enqueue(rendered);
+                }
+                else
+                {
+                    Thread.Sleep(100);
+                }
+            }
         }
 
         private void Output()
@@ -57,29 +105,7 @@ namespace PixelFlut.Infrastructure
                 }
                 else
                 {
-                    Console.WriteLine("Buffer underrun!");
-                    Thread.Sleep(100);
-                }
-            }
-        }
-
-        private void Render()
-        {
-            while (!cancellationTokenSource.Token.IsCancellationRequested)
-            {
-                if (this.renderedQueue.Count < 100)
-                {
-                    IList<OutputPixel> pixels;
-                    lock (this.effectLock)
-                    {
-                        pixels = this.effect.GetPixels();
-                    }
-                    var rendered = this.outputService.PreRender(pixels);
-                    this.renderedQueue.Enqueue(rendered);
-                }
-                else
-                {
-                    Console.WriteLine("Buffer overrun!");
+                    Console.WriteLine("output buffer empty!");
                     Thread.Sleep(100);
                 }
             }

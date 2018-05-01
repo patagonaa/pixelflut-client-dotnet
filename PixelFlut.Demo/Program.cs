@@ -29,7 +29,7 @@ namespace PixelFlut.Demo
             var outputService = new PixelFlutRenderOutputService(ep);
 
             var eh = new EffectHost<byte[]>(outputService);
-            eh.SetEffect(new RandomBoxes(new Size(500, 500)));
+            eh.SetEffect(new RandomBoxes(new Size(400, 400)));
             eh.Start();
             Thread.Sleep(600000);
             eh.Stop();
