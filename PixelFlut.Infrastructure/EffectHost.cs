@@ -10,8 +10,9 @@ namespace PixelFlut.Infrastructure
 {
     public class EffectHost<TRendered>
     {
-        private const int EffectQueueLength = 10;
-        private const int RenderQueueLength = 10;
+        private const int EffectQueueLength = 50;
+        private const int RenderQueueLength = 50;
+        private const int RenderThreadCount = 4;
 
         private IEffect effect;
         private object effectLock = new object();
@@ -19,6 +20,7 @@ namespace PixelFlut.Infrastructure
         private Thread effectThread;
         private Thread renderThread;
         private Thread outputThread;
+        private Thread logThread;
         private CancellationTokenSource cancellationTokenSource;
         private readonly IRenderOutputService<TRendered> outputService;
 
@@ -42,6 +44,9 @@ namespace PixelFlut.Infrastructure
 
             this.outputThread = new Thread(Output);
             this.outputThread.Start();
+
+            this.logThread = new Thread(Log);
+            this.logThread.Start();
         }
 
         public void Stop()
@@ -82,11 +87,10 @@ namespace PixelFlut.Infrastructure
                 {
                     if (!this.effectQueue.TryDequeue(out var pixels))
                     {
-                        Console.WriteLine("render buffer empty!");
                         continue;
                     }
 
-                    if (taskQueue.Count < 4)
+                    if (taskQueue.Count < RenderThreadCount)
                     {
                         taskQueue.Enqueue(Task.Run(() => this.outputService.PreRender(pixels)));
                     }
@@ -114,9 +118,17 @@ namespace PixelFlut.Infrastructure
                 }
                 else
                 {
-                    Console.WriteLine("output buffer empty!");
                     Thread.Sleep(100);
                 }
+            }
+        }
+
+        private void Log()
+        {
+            while (!cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                Console.WriteLine($"Render: {this.effectQueue.Count:D3} Out: {this.renderedQueue.Count:D3}");
+                Thread.Sleep(500);
             }
         }
 

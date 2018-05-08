@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Infrastructure
 {
@@ -18,25 +19,15 @@ namespace PixelFlut.Infrastructure
         {
             if (!this.initialized)
                 throw new InvalidOperationException("not initialized!");
-            TickInternal();
-            Counter++;
-            var pixels = this.pixels;
-            this.pixels = new List<OutputPixel>();
-            return pixels;
+            return TickInternal().ToList();
         }
 
-        protected abstract void TickInternal();
-
-        private List<OutputPixel> pixels = new List<OutputPixel>();
+        protected abstract IEnumerable<OutputPixel> TickInternal();
 
         protected Size CanvasSize { get; private set; }
 
         private bool initialized;
 
         protected int Counter { get; private set; }
-        protected void DrawPixel(Point point, Color color)
-        {
-            this.pixels.Add(new OutputPixel(point, color));
-        }
     }
 }
