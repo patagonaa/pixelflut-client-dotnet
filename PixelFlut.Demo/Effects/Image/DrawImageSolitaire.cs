@@ -77,7 +77,6 @@ namespace PixelFlut.Infrastructure.Effects.Image
             }
 
             states[index] = state;
-            Console.WriteLine(index);
             return DrawImage(currentImg, new Point((int)state.offsetX, (int)state.offsetY));
         }
     }
