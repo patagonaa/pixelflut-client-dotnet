@@ -23,15 +23,19 @@ namespace PixelFlut.Demo
         static void Main(string[] args)
         {
             var r = new Random();
-            var ip = IPAddress.Parse("192.168.178.59");
+            var ip = IPAddress.Parse("10.214.11.105");
             var port = 1234;
 
             var ep = new IPEndPoint(ip, port);
+            //var ep = new DnsEndPoint("displays.local", port);
 
             var outputService = new PixelFlutRenderOutputService(ep);
 
             var eh = new EffectHost<byte[]>(outputService);
-            eh.SetEffect(new DrawImageSolitaire("/home/patagona/Stuff/solitaire.png"));
+            //eh.SetEffect(new RandomBoxes(new Size(1000, 1000)));
+            eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/solitaire.png"}, 2));
+            //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/white.png", "/home/patagona/Stuff/black.png"}, 2));
+            //eh.SetEffect(new Infrastructure.Effects.Void());
             eh.Start();
             Thread.Sleep(Timeout.Infinite);
             eh.Stop();

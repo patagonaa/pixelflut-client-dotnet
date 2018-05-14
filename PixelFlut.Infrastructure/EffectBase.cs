@@ -9,7 +9,7 @@ namespace PixelFlut.Infrastructure
 {
     public abstract class EffectBase : IEffect
     {
-        public void Init(Size canvasSize)
+        public virtual void Init(Size canvasSize)
         {
             CanvasSize = canvasSize;
             this.initialized = true;

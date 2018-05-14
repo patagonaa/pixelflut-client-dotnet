@@ -3,18 +3,20 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace PixelFlut.Infrastructure
 {
     public class PixelFlutRenderOutputService : IRenderOutputService<byte[]>
     {
         private Socket client;
-        private readonly IPEndPoint endPoint;
+        private readonly EndPoint endPoint;
 
-        public PixelFlutRenderOutputService(IPEndPoint endPoint)
+        public PixelFlutRenderOutputService(EndPoint endPoint)
         {
             this.client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             this.endPoint = endPoint;
@@ -31,6 +33,16 @@ namespace PixelFlut.Infrastructure
 
             try
             {
+                //For debugging: set each pixel seperately
+                // foreach (var px in Encoding.UTF8.GetString(rendered).Split('\n').Select(x => Encoding.UTF8.GetBytes(x+"\n")))
+                // {
+                //     Console.WriteLine(Encoding.UTF8.GetString(px));
+                //     this.client.Send(px);
+                //     System.Threading.Thread.Sleep(100);
+                // }
+
+                //For debugging: output Pixels to console
+                //Console.WriteLine(Encoding.UTF8.GetString(rendered));
                 this.client.Send(rendered);
             }
             catch (SocketException ex)
@@ -109,6 +121,7 @@ namespace PixelFlut.Infrastructure
                 int receivedBytes;
                 using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
                 {
+                    Console.WriteLine("getting size");
                     socket.Connect(this.endPoint);
                     socket.Send(Encoding.UTF8.GetBytes("SIZE\n"));
 
@@ -117,6 +130,7 @@ namespace PixelFlut.Infrastructure
                     socket.Close();
                 }
                 var str = Encoding.UTF8.GetString(bytes, 0, receivedBytes);
+                Console.WriteLine($"Got response: {str}");
                 var split = str.Split(' ');
                 try
                 {

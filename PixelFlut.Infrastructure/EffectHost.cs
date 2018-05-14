@@ -10,9 +10,9 @@ namespace PixelFlut.Infrastructure
 {
     public class EffectHost<TRendered>
     {
-        private const int EffectQueueLength = 50;
-        private const int RenderQueueLength = 50;
-        private const int RenderThreadCount = 4;
+        private const int EffectQueueLength = 500;
+        private const int RenderQueueLength = 500;
+        private const int RenderThreadCount = 8;
 
         private IEffect effect;
         private object effectLock = new object();
@@ -85,13 +85,12 @@ namespace PixelFlut.Infrastructure
             {
                 if (this.renderedQueue.Count < RenderQueueLength)
                 {
-                    if (!this.effectQueue.TryDequeue(out var pixels))
-                    {
-                        continue;
-                    }
-
                     if (taskQueue.Count < RenderThreadCount)
                     {
+                        if (!this.effectQueue.TryDequeue(out var pixels))
+                        {
+                            continue;
+                        }
                         taskQueue.Enqueue(Task.Run(() => this.outputService.PreRender(pixels)));
                     }
                     else

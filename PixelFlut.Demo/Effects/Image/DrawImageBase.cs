@@ -10,22 +10,22 @@ namespace PixelFlut.Infrastructure.Effects.Image
 {
     public abstract class DrawImageBase : EffectBase
     {
-        protected readonly Rgba32Image image;
-        protected readonly byte[] pixelData;
 
-        public DrawImageBase(string filePath)
+        protected Tuple<Rgba32Image, byte[]> GetImageData(string filePath)
         {
-            this.image = SixLabors.ImageSharp.Image.Load(filePath);
-            this.pixelData = ImageExtensions.SavePixelData(this.image);
+            var image = SixLabors.ImageSharp.Image.Load(filePath);
+            var pixelData = ImageExtensions.SavePixelData(image);
+            return new Tuple<Rgba32Image, byte[]>(image, pixelData);
         }
 
-        protected IEnumerable<OutputPixel> DrawImage(Point offsetP, bool mirror = false)
+        protected IEnumerable<OutputPixel> DrawImage(Tuple<Rgba32Image, byte[]> imageData, Point offsetP, bool mirror = false)
         {
             var offsetX = offsetP.X;
             var offsetY = offsetP.Y;
 
             var canvasSize = this.CanvasSize;
-            var bytes = this.pixelData;
+            var image = imageData.Item1;
+            var bytes = imageData.Item2;
 
             var width = image.Width;
             var height = image.Height;

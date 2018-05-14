@@ -17,11 +17,12 @@ namespace PixelFlut.Infrastructure.Effects
 
         protected override IEnumerable<OutputPixel> TickInternal()
         {
-            var maxOffsetX = CanvasSize.Width - boxSize.Width;
-            var maxOffsetY = CanvasSize.Height - boxSize.Height;
+            var maxOffsetX = CanvasSize.Width - boxSize.Width + 1;
+            var maxOffsetY = CanvasSize.Height - boxSize.Height + 1;
 
-            var color = Color.FromArgb((int)(random.Next() | 0xFF000000));
-            var offsetX = this.random.Next(250, maxOffsetX);
+            //var color = Color.FromArgb((int)(random.Next() | 0xFF000000));
+            var color = random.Next(0, 100) > 50 ? Color.White : Color.Black;
+            var offsetX = this.random.Next(0, maxOffsetX);
             var offsetY = this.random.Next(0, maxOffsetY);
 
             for (int y = 0; y < boxSize.Height; y++)
