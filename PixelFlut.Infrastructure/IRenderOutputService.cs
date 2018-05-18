@@ -8,5 +8,6 @@ namespace PixelFlut.Infrastructure
         TRendered PreRender(IReadOnlyCollection<OutputPixel> pixels);
         void Output(TRendered rendered);
         Size GetSize();
+        IList<KeyValuePair<string, string>> GetDiagnostics();
     }
 }

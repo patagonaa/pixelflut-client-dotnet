@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,9 +11,9 @@ namespace PixelFlut.Infrastructure
 {
     public class EffectHost<TRendered>
     {
-        private const int EffectQueueLength = 500;
-        private const int RenderQueueLength = 500;
-        private const int RenderThreadCount = 8;
+        private const int EffectQueueLength = 20;
+        private const int RenderQueueLength = 20;
+        private const int RenderThreadCount = 2;
 
         private IEffect effect;
         private object effectLock = new object();
@@ -73,7 +74,7 @@ namespace PixelFlut.Infrastructure
                 }
                 else
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(10);
                 }
             }
         }
@@ -102,7 +103,7 @@ namespace PixelFlut.Infrastructure
                 }
                 else
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(10);
                 }
             }
         }
@@ -117,7 +118,7 @@ namespace PixelFlut.Infrastructure
                 }
                 else
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(1);
                 }
             }
         }
@@ -126,7 +127,12 @@ namespace PixelFlut.Infrastructure
         {
             while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
-                Console.WriteLine($"Render: {this.effectQueue.Count:D3} Out: {this.renderedQueue.Count:D3}");
+                var diagnostics = new List<KeyValuePair<string, string>>();
+                diagnostics.Add(new KeyValuePair<string, string>("RenderBuf", this.effectQueue.Count.ToString("D3", CultureInfo.InvariantCulture)));
+                diagnostics.Add(new KeyValuePair<string, string>("OutBuf", this.renderedQueue.Count.ToString("D3", CultureInfo.InvariantCulture)));
+                diagnostics.AddRange(this.outputService.GetDiagnostics());
+
+                Console.WriteLine(string.Join(", ", diagnostics.Select(x => $"{x.Key}: {x.Value}")));
                 Thread.Sleep(500);
             }
         }
