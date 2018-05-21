@@ -29,18 +29,23 @@ namespace PixelFlut.Demo
             var ep = new IPEndPoint(ip, port);
             //var ep = new DnsEndPoint("displays.local", port);
 
-            var renderService = new PixelFlutLookupTableRenderService();
+            //var renderService = new PixelFlutLookupTableRenderService();
+            var renderService = new PixelFlutLookupTableByteArrayRenderService();
             //var outputService = new PixelFlutOutputService(ep);
 
             var eh = new EffectHost(renderService, ep);
-            //eh.SetEffect(new RandomBoxes(new Size(20, 20)));
+            eh.SetEffect(new RandomBoxes(new Size(100, 100)));
             //eh.SetEffect(new DrawImageStatic("/home/patagona/Stuff/cyber.jpg", Point.Empty));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/cyber.jpg"}, 1));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/solitaire.png"}, 50));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/white.png", "/home/patagona/Stuff/black.png"}, 2));
-            eh.SetEffect(new Infrastructure.Effects.Void());
+            //eh.SetEffect(new Infrastructure.Effects.Void());
             eh.Start();
-            Thread.Sleep(Timeout.Infinite);
+
+            var cts = new CancellationTokenSource();
+            System.AppDomain.CurrentDomain.ProcessExit += (e, evArgs) => cts.Cancel();
+            cts.Token.WaitHandle.WaitOne();
+
             eh.Stop();
         }
     }

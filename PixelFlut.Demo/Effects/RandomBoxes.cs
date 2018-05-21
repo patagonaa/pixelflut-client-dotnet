@@ -28,9 +28,12 @@ namespace PixelFlut.Infrastructure.Effects
             var toReturn = new OutputPixel[boxSize.Width * boxSize.Height];
 
             int i = 0;
-            for (int y = 0; y < boxSize.Height; y++)
+            var width = boxSize.Width;
+            var height = boxSize.Height;
+
+            for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < boxSize.Width; x++)
+                for (int x = 0; x < width; x++)
                 {
                     toReturn[i++] = new OutputPixel(offsetX + x, offsetY + y, color);
                 }
