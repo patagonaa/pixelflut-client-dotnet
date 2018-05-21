@@ -5,7 +5,7 @@ namespace PixelFlut.Infrastructure
 {
     public interface IOutputService
     {
-        void Output(byte[] rendered);
+        int Output(byte[] rendered);
         Size GetSize();
     }
 }

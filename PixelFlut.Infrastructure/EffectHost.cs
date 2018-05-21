@@ -17,10 +17,7 @@ namespace PixelFlut.Infrastructure
         private const int RenderThreadCount = 16;
         private const int OutputThreadCount = 2;
 
-        private IEffect effect;
-        private object effectLock = new object();
-
-        private Thread effectThread;
+        private IList<Thread> effectThreads = new List<Thread>();
         private Thread renderThread;
         private Thread outputThread;
         private Thread logThread;
@@ -37,6 +34,7 @@ namespace PixelFlut.Infrastructure
 
         public EffectHost(IRenderService renderService, EndPoint endPoint)
         {
+            this.cancellationTokenSource = new CancellationTokenSource();
             this.renderService = renderService;
             this.outputService = new PixelFlutOutputService(endPoint);
             this.endPoint = endPoint;
@@ -44,12 +42,6 @@ namespace PixelFlut.Infrastructure
 
         public void Start()
         {
-            this.cancellationTokenSource = new CancellationTokenSource();
-
-            this.effectThread = new Thread(Effect);
-            this.effectThread.Priority = ThreadPriority.Highest;
-            this.effectThread.Start();
-
             this.renderThread = new Thread(Render);
             this.renderThread.Start();
 
@@ -64,19 +56,24 @@ namespace PixelFlut.Infrastructure
         public void Stop()
         {
             cancellationTokenSource?.Cancel();
-            effectThread?.Join();
+            foreach (var effectThread in effectThreads)
+            {
+                effectThread.Join();
+            }
             renderThread?.Join();
             outputThread?.Join();
+
+            this.cancellationTokenSource = new CancellationTokenSource();
         }
 
-        private void Effect()
+        private void Effect(IEffect effect)
         {
             while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
                 if (this.effectQueue.Count < EffectQueueLength)
                 {
                     IReadOnlyCollection<OutputPixel> pixels;
-                    pixels = this.effect.GetPixels();
+                    pixels = effect.GetPixels();
                     this.effectQueue.Enqueue(pixels);
                 }
                 else
@@ -150,8 +147,8 @@ namespace PixelFlut.Infrastructure
                 if (this.renderedQueue.TryDequeue(out var rendered))
                 {
                     renderTooSlow = false;
-                    outputService.Output(rendered);
-                    var sentBytes = rendered.Length;
+                    var sentBytes = outputService.Output(rendered);
+                    //var sentBytes = rendered.Length;
                     lock (_diagSamples)
                     {
                         _diagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
@@ -224,10 +221,13 @@ namespace PixelFlut.Infrastructure
             }
         }
 
-        public void SetEffect(IEffect effect)
+        public void AddEffect(IEffect effect)
         {
+            var effectThread = new Thread(() => Effect(effect));
+            effectThread.Priority = ThreadPriority.Highest;
+
             effect.Init(this.outputService.GetSize());
-            this.effect = effect;
+            effectThread.Start();
         }
     }
 }

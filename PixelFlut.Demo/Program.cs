@@ -34,7 +34,8 @@ namespace PixelFlut.Demo
             //var outputService = new PixelFlutOutputService(ep);
 
             var eh = new EffectHost(renderService, ep);
-            eh.SetEffect(new RandomBoxes(new Size(100, 100)));
+            eh.AddEffect(new RandomBoxes(new Size(500, 500)));
+            eh.AddEffect(new RandomBoxes(new Size(500, 500)));
             //eh.SetEffect(new DrawImageStatic("/home/patagona/Stuff/cyber.jpg", Point.Empty));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/cyber.jpg"}, 1));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/solitaire.png"}, 50));

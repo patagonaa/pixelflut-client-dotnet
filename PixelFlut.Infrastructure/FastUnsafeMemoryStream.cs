@@ -21,7 +21,7 @@ namespace PixelFlut.Infrastructure
 #endif
 
             var i = length;
-            while (--i > 0)
+            while (--i >= 0)
             {
                 buffer[i + position] = source[i];
             }

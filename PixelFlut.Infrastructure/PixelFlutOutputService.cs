@@ -20,7 +20,7 @@ namespace PixelFlut.Infrastructure
             this.endPoint = endPoint;
         }
 
-        public void Output(byte[] rendered)
+        public int Output(byte[] rendered)
         {
             if (!(this.client?.Connected ?? false))
             {
@@ -42,10 +42,7 @@ namespace PixelFlut.Infrastructure
                 //For debugging: output Pixels to console
                 //Console.WriteLine(Encoding.UTF8.GetString(rendered));
 
-                var sentBytes = this.client.Send(rendered);
-
-                //for pure traffic generation measurement:
-                //var sentBytes = rendered.Length;
+                return this.client.Send(rendered);
             }
             catch (SocketException ex)
             {
@@ -58,6 +55,7 @@ namespace PixelFlut.Infrastructure
                     this.client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     this.client.Connect(this.endPoint);
                 }
+                return 0;
             }
         }
 
