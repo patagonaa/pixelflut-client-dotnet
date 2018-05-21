@@ -4,13 +4,22 @@ namespace PixelFlut.Infrastructure
 {
     public struct OutputPixel
     {
-        public OutputPixel(Point point, Color color)
+        public OutputPixel(int x, int y, int argb)
         {
-            Point = point;
-            Color = color;
+            X = x;
+            Y = y;
+            Color = argb;
         }
 
-        public Point Point { get; }
-        public Color Color { get; }
+        public OutputPixel(Point point, Color color)
+        {
+            X = point.X;
+            Y = point.Y;
+            Color = color.ToArgb();
+        }
+
+        public readonly int X;
+        public readonly int Y;
+        public readonly int Color;
     }
 }

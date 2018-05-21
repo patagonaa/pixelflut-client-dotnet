@@ -35,17 +35,20 @@ namespace PixelFlut.Infrastructure.Effects.Image
                 for (int x = 0; x < width; x++)
                 {
                     int offset = ((mirror ? width - x - 1 : x) + (y * width)) * 4;
-                    if (bytes[offset + 3] == 0)
+                    int a = bytes[offset + 3];
+                    if (a == 0)
                         continue;
                     var renderX = x + offsetX;
                     var renderY = y + offsetY;
                     if (renderX < 0 || renderY < 0 || renderX >= canvasSize.Width || renderY >= canvasSize.Height)
                         continue;
 
-                    var imagePos = new Point(x, y);
-                    imagePos.Offset(offsetX, offsetY);
+                    int r = bytes[offset];
+                    int g = bytes[offset + 1];
+                    int b = bytes[offset + 2];
 
-                    yield return new OutputPixel(imagePos, Color.FromArgb(bytes[offset + 3], bytes[offset], bytes[offset + 1], bytes[offset + 2]));
+                    var argb = a << 24 | r << 16 | g << 8 | b;
+                    yield return new OutputPixel(x + offsetX, y + offsetY, argb);
                 }
             }
         }

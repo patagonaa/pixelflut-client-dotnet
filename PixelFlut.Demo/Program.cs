@@ -29,13 +29,16 @@ namespace PixelFlut.Demo
             var ep = new IPEndPoint(ip, port);
             //var ep = new DnsEndPoint("displays.local", port);
 
-            var outputService = new PixelFlutRenderOutputService(ep);
+            var renderService = new PixelFlutLookupTableRenderService();
+            //var outputService = new PixelFlutOutputService(ep);
 
-            var eh = new EffectHost<byte[]>(outputService);
-            //eh.SetEffect(new RandomBoxes(new Size(1000, 1000)));
-            eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/solitaire.png"}, 2));
+            var eh = new EffectHost(renderService, ep);
+            //eh.SetEffect(new RandomBoxes(new Size(20, 20)));
+            //eh.SetEffect(new DrawImageStatic("/home/patagona/Stuff/cyber.jpg", Point.Empty));
+            //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/cyber.jpg"}, 1));
+            //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/solitaire.png"}, 50));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/white.png", "/home/patagona/Stuff/black.png"}, 2));
-            //eh.SetEffect(new Infrastructure.Effects.Void());
+            eh.SetEffect(new Infrastructure.Effects.Void());
             eh.Start();
             Thread.Sleep(Timeout.Infinite);
             eh.Stop();

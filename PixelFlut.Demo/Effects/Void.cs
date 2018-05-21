@@ -10,13 +10,13 @@ namespace PixelFlut.Infrastructure.Effects
         {
             var height = CanvasSize.Height;
             var width = CanvasSize.Width;
+            var color = Color.Black.ToArgb();
 
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    var pos = new Point(x, y);
-                    yield return new OutputPixel(pos, Color.Black);
+                    yield return new OutputPixel(x, y, color);
                 }
             }
         }
