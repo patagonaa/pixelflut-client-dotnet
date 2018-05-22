@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace PixelFlut.Infrastructure
 {
@@ -22,15 +23,10 @@ namespace PixelFlut.Infrastructure
 
         public int Output(ArraySegment<byte> rendered)
         {
-            if (!(this.client?.Connected ?? false))
-            {
-                this.client?.Dispose();
-                this.client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                this.client.Connect(this.endPoint);
-            }
-
             try
             {
+                EnsureConnected();
+
                 //For debugging: set each pixel seperately
                 // foreach (var px in Encoding.UTF8.GetString(rendered).Split('\n').Select(x => Encoding.UTF8.GetBytes(x+"\n")))
                 // {
@@ -42,20 +38,23 @@ namespace PixelFlut.Infrastructure
                 //For debugging: output Pixels to console
                 //Console.WriteLine(Encoding.UTF8.GetString(rendered));
 
-                return this.client.Send(new [] { rendered });
+                return this.client.Send(new[] { rendered });
             }
             catch (SocketException ex)
             {
-                Console.WriteLine($"Connection fucked: {ex.SocketErrorCode}\n{ex}");
-                if (ex.SocketErrorCode == SocketError.Shutdown ||
-                    ex.SocketErrorCode == SocketError.ConnectionAborted ||
-                    ex.SocketErrorCode == SocketError.TimedOut)
-                {
-                    this.client.Dispose();
-                    this.client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    this.client.Connect(this.endPoint);
-                }
+                Console.WriteLine($"Connection fucked: {ex.SocketErrorCode}");
                 return 0;
+            }
+        }
+
+        private void EnsureConnected()
+        {
+            if (!(this.client?.Connected ?? false))
+            {
+                Thread.Sleep(1000);
+                this.client?.Dispose();
+                this.client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                this.client.Connect(this.endPoint);
             }
         }
 

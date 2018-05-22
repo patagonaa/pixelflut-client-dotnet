@@ -162,7 +162,6 @@ namespace PixelFlut.Infrastructure
                 else
                 {
                     renderTooSlow = true;
-                    //Console.WriteLine("Output buffer Empty!");
                     Thread.Sleep(1);
                 }
             }

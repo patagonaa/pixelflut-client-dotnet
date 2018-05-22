@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Contracts;
 using System.Runtime.InteropServices;
 
 namespace PixelFlut.Infrastructure
@@ -20,11 +21,11 @@ namespace PixelFlut.Infrastructure
             this.bufferSize = bufferSize;
         }
 
-        public void Write(byte[] source, int sourceIndex, int length)
+        public void Write(byte* source, int length)
         {
 #if DEBUG
-            //Contract.Assert(length > 0);
-            //Contract.Assert(position + length < bufferSize, "Buffer too small!");
+            Contract.Assert(length > 0);
+            Contract.Assert(position + length < bufferSize, "Buffer too small!");
 #endif
 
             var i = length;
@@ -35,10 +36,25 @@ namespace PixelFlut.Infrastructure
             position += length;
         }
 
+        public void Write(byte[] source, int length)
+        {
+#if DEBUG
+            Contract.Assert(length > 0);
+            Contract.Assert(position + length < bufferSize, "Buffer too small!");
+#endif
+
+            var i = length;
+            while (--i != 0)
+            {
+                bufferptr[i + position] = source[i];
+            }
+            position += length;
+        }
+
         public void WriteByte(byte b)
         {
 #if DEBUG
-            //Contract.Assert(position + 1 < bufferSize, $"Buffer too small! {position} {bufferSize}");
+            Contract.Assert(position + 1 < bufferSize, $"Buffer too small! {position} {bufferSize}");
 #endif
             bufferptr[position++] = b;
         }

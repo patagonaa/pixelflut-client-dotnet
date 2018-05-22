@@ -30,7 +30,7 @@ namespace PixelFlut.Demo
             //var ep = new DnsEndPoint("displays.local", port);
 
             //var renderService = new PixelFlutLookupTableRenderService();
-            var renderService = new PixelFlutLookupTableByteArrayRenderService();
+            var renderService = new PixelFlutLookupTableUnsafeRenderService();
             //var outputService = new PixelFlutOutputService(ep);
 
             var eh = new EffectHost(renderService, ep);
@@ -48,6 +48,7 @@ namespace PixelFlut.Demo
             cts.Token.WaitHandle.WaitOne();
 
             eh.Stop();
+            renderService.Dispose();
         }
     }
 }
