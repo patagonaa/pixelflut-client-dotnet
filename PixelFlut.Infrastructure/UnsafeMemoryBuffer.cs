@@ -21,6 +21,21 @@ namespace PixelFlut.Infrastructure
             this.bufferSize = bufferSize;
         }
 
+        public void Write(byte[] source, int length)
+        {
+#if DEBUG
+            Contract.Assert(length > 0);
+            Contract.Assert(position + length < bufferSize, "Buffer too small!");
+#endif
+
+            var i = length;
+            while (--i >= 0)
+            {
+                bufferptr[i + position] = source[i];
+            }
+            position += length;
+        }
+
         public void Write(byte* source, int length)
         {
 #if DEBUG
@@ -36,19 +51,16 @@ namespace PixelFlut.Infrastructure
             position += length;
         }
 
-        public void Write(byte[] source, int length)
+        public void WriteNullTerminated(byte* source)
         {
-#if DEBUG
-            Contract.Assert(length > 0);
-            Contract.Assert(position + length < bufferSize, "Buffer too small!");
-#endif
-
-            var i = length;
-            while (--i != 0)
+            var i = 0;
+            byte chr = 0;
+            while ((chr = source[i]) != 0)
             {
-                bufferptr[i + position] = source[i];
+                bufferptr[position + i++] = chr;
             }
-            position += length;
+
+            position += i;
         }
 
         public void WriteByte(byte b)

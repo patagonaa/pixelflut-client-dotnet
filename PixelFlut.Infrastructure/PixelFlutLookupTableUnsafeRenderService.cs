@@ -11,6 +11,7 @@ namespace PixelFlut.Infrastructure
     public unsafe class PixelFlutLookupTableUnsafeRenderService : IRenderService, IDisposable
     {
         private readonly List<GCHandle> _gcHandles = new List<GCHandle>();
+
         public PixelFlutLookupTableUnsafeRenderService()
         {
             var pxHandle = GCHandle.Alloc(Encoding.ASCII.GetBytes("PX "), GCHandleType.Pinned);
@@ -19,7 +20,21 @@ namespace PixelFlut.Infrastructure
 
             newline = Encoding.ASCII.GetBytes("\n")[0];
             space = Encoding.ASCII.GetBytes(" ")[0];
-            numbersWithSpace = Enumerable.Range(0, 5000).Select(x => Encoding.ASCII.GetBytes(x.ToString(CultureInfo.InvariantCulture) + " ")).ToArray();
+            var decNumbers = Enumerable.Range(0, 5000)
+                .Select(x =>
+                    Encoding.ASCII.GetBytes(x.ToString(CultureInfo.InvariantCulture) + " ").Concat(new[] { (byte)0 }).ToArray())
+                .ToArray();
+
+            var decNumbersPtrs = decNumbers.Select(x =>
+            {
+                var handle = GCHandle.Alloc(x, GCHandleType.Pinned);
+                _gcHandles.Add(handle);
+                return handle.AddrOfPinnedObject();
+            }).ToArray();
+
+            var decNumbersHandle = GCHandle.Alloc(decNumbersPtrs, GCHandleType.Pinned);
+            numbersWithSpace = (byte**)decNumbersHandle.AddrOfPinnedObject();
+            _gcHandles.Add(decNumbersHandle);
 
             var hexNumbersHandle = GCHandle.Alloc(Enumerable.Range(0, 256).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray(), GCHandleType.Pinned);
             hexNumbers = (byte*)hexNumbersHandle.AddrOfPinnedObject();
@@ -35,7 +50,7 @@ namespace PixelFlut.Infrastructure
         private readonly byte* px;
         private readonly byte newline;
         private readonly byte space;
-        private readonly byte[][] numbersWithSpace;
+        private readonly byte** numbersWithSpace;
         private readonly byte* hexNumbers;
 
         public ArraySegment<byte> PreRender(OutputPixel[] pixels)
@@ -49,10 +64,10 @@ namespace PixelFlut.Infrastructure
                     var pixel = pixels[i];
                     ms.Write(px, 3);
                     var xNum = numbersWithSpace[pixel.X];
-                    ms.Write(xNum, xNum.Length);
+                    ms.WriteNullTerminated(xNum);
 
                     var yNum = numbersWithSpace[pixel.Y];
-                    ms.Write(yNum, yNum.Length);
+                    ms.WriteNullTerminated(yNum);
 
                     var argbColor = pixel.Color;
 
