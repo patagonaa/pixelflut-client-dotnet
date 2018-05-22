@@ -29,8 +29,8 @@ namespace PixelFlut.Infrastructure
         private volatile bool renderTooSlow = false;
         private volatile bool outputTooSlow = false;
 
-        private ConcurrentQueue<IReadOnlyCollection<OutputPixel>> effectQueue = new ConcurrentQueue<IReadOnlyCollection<OutputPixel>>();
-        private ConcurrentQueue<byte[]> renderedQueue = new ConcurrentQueue<byte[]>();
+        private ConcurrentQueue<OutputPixel[]> effectQueue = new ConcurrentQueue<OutputPixel[]>();
+        private ConcurrentQueue<ArraySegment<byte>> renderedQueue = new ConcurrentQueue<ArraySegment<byte>>();
 
         public EffectHost(IRenderService renderService, EndPoint endPoint)
         {
@@ -72,7 +72,7 @@ namespace PixelFlut.Infrastructure
             {
                 if (this.effectQueue.Count < EffectQueueLength)
                 {
-                    IReadOnlyCollection<OutputPixel> pixels;
+                    OutputPixel[] pixels;
                     pixels = effect.GetPixels();
                     this.effectQueue.Enqueue(pixels);
                 }
@@ -85,7 +85,7 @@ namespace PixelFlut.Infrastructure
 
         private void Render()
         {
-            var taskQueue = new Queue<Task<byte[]>>();
+            var taskQueue = new Queue<Task<ArraySegment<byte>>>();
             while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
                 if (this.renderedQueue.Count < RenderQueueLength)
@@ -148,7 +148,7 @@ namespace PixelFlut.Infrastructure
                 {
                     renderTooSlow = false;
                     var sentBytes = outputService.Output(rendered);
-                    //var sentBytes = rendered.Length;
+                    //var sentBytes = rendered.Count;
                     lock (_diagSamples)
                     {
                         _diagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));

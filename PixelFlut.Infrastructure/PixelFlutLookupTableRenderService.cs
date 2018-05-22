@@ -1,15 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 
 namespace PixelFlut.Infrastructure
 {
@@ -28,9 +22,9 @@ namespace PixelFlut.Infrastructure
         private readonly byte[][] numbers = Enumerable.Range(0, 5000).Select(x => Encoding.ASCII.GetBytes(x.ToString(CultureInfo.InvariantCulture))).ToArray();
         private readonly byte[][] hexNumbers = Enumerable.Range(0, 256).Select(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray();
 
-        public byte[] PreRender(IReadOnlyCollection<OutputPixel> pixels)
+        public ArraySegment<byte> PreRender(OutputPixel[] pixels)
         {
-            using (var ms = new MemoryStream(pixels.Count * 20))
+            using (var ms = new MemoryStream(pixels.Length * 24))
             {
                 foreach (var pixel in pixels)
                 {
@@ -58,7 +52,7 @@ namespace PixelFlut.Infrastructure
                     }
                     ms.WriteByte(newline);
                 }
-                return ms.ToArray();
+                return new ArraySegment<byte>(ms.ToArray());
             }
         }
     }

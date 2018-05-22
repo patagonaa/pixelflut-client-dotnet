@@ -15,11 +15,11 @@ namespace PixelFlut.Infrastructure
             this.initialized = true;
         }
 
-        public IReadOnlyCollection<OutputPixel> GetPixels()
+        public OutputPixel[] GetPixels()
         {
             if (!this.initialized)
                 throw new InvalidOperationException("not initialized!");
-            return TickInternal().ToList();
+            return TickInternal().ToArray();
         }
 
         protected abstract IEnumerable<OutputPixel> TickInternal();

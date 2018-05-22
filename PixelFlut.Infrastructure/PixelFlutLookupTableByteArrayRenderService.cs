@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -20,32 +21,37 @@ namespace PixelFlut.Infrastructure
         private readonly byte[][] numbersWithSpace = Enumerable.Range(0, 5000).Select(x => Encoding.ASCII.GetBytes(x.ToString(CultureInfo.InvariantCulture) + " ")).ToArray();
         private readonly byte[][] hexNumbers = Enumerable.Range(0, 256).Select(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray();
 
-        public byte[] PreRender(IReadOnlyCollection<OutputPixel> pixels)
+        public ArraySegment<byte> PreRender(OutputPixel[] pixels)
         {
-            var ms = new FastUnsafeMemoryStream(pixels.Count * 20);
-            foreach (var pixel in pixels)
+            using (var ms = new UnsafeMemoryBuffer(pixels.Length * 24))
             {
-                ms.Write(px, 0, 3);
-                var xNum = numbersWithSpace[pixel.X];
-                ms.Write(xNum, 0, xNum.Length);
+                var len = pixels.Length;
 
-                var yNum = numbersWithSpace[pixel.Y];
-                ms.Write(yNum, 0, yNum.Length);
-
-                var argbColor = pixel.Color;
-
-                ms.Write(hexNumbers[argbColor >> 16 & 0xFF], 0, 2);
-                ms.Write(hexNumbers[argbColor >> 8 & 0xFF], 0, 2);
-                ms.Write(hexNumbers[argbColor & 0xFF], 0, 2);
-
-                var a = (argbColor >> 24 & 0xFF);
-                if (a != 255)
+                for(int i = 0; i < len; i++)
                 {
-                    ms.Write(hexNumbers[a], 0, 2);
+                    var pixel = pixels[i];
+                    ms.Write(px, 0, 3);
+                    var xNum = numbersWithSpace[pixel.X];
+                    ms.Write(xNum, 0, xNum.Length);
+
+                    var yNum = numbersWithSpace[pixel.Y];
+                    ms.Write(yNum, 0, yNum.Length);
+
+                    var argbColor = pixel.Color;
+
+                    ms.Write(hexNumbers[argbColor >> 16 & 0xFF], 0, 2);
+                    ms.Write(hexNumbers[argbColor >> 8 & 0xFF], 0, 2);
+                    ms.Write(hexNumbers[argbColor & 0xFF], 0, 2);
+
+                    var a = (argbColor >> 24 & 0xFF);
+                    if (a != 255)
+                    {
+                        ms.Write(hexNumbers[a], 0, 2);
+                    }
+                    ms.WriteByte(newline);
                 }
-                ms.WriteByte(newline);
+                return ms.ToArray();
             }
-            return ms.ToArray();
         }
     }
 }

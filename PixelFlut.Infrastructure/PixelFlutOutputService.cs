@@ -20,7 +20,7 @@ namespace PixelFlut.Infrastructure
             this.endPoint = endPoint;
         }
 
-        public int Output(byte[] rendered)
+        public int Output(ArraySegment<byte> rendered)
         {
             if (!(this.client?.Connected ?? false))
             {
@@ -42,7 +42,7 @@ namespace PixelFlut.Infrastructure
                 //For debugging: output Pixels to console
                 //Console.WriteLine(Encoding.UTF8.GetString(rendered));
 
-                return this.client.Send(rendered);
+                return this.client.Send(new [] { rendered });
             }
             catch (SocketException ex)
             {

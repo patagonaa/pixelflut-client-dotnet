@@ -3,12 +3,12 @@ using System.Diagnostics.Contracts;
 
 namespace PixelFlut.Infrastructure
 {
-    internal class FastUnsafeMemoryStream
+    internal class FastMemoryBuffer : IDisposable
     {
         private byte[] buffer;
         private int position;
 
-        public FastUnsafeMemoryStream(int bufferSize)
+        public FastMemoryBuffer(int bufferSize)
         {
             this.buffer = new byte[bufferSize];
         }
@@ -41,6 +41,10 @@ namespace PixelFlut.Infrastructure
             var toReturn = new byte[position];
             Buffer.BlockCopy(buffer, 0, toReturn, 0, position);
             return toReturn;
+        }
+
+        public void Dispose()
+        {
         }
     }
 }
