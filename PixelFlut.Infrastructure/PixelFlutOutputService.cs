@@ -28,7 +28,7 @@ namespace PixelFlut.Infrastructure
                 EnsureConnected();
 
                 //For debugging: set each pixel seperately
-                // foreach (var px in Encoding.UTF8.GetString(rendered).Split('\n').Select(x => Encoding.UTF8.GetBytes(x+"\n")))
+                // foreach (var px in Encoding.UTF8.GetString(rendered.Array, 0, rendered.Count).Split('\n').Select(x => Encoding.UTF8.GetBytes(x+"\n")))
                 // {
                 //     Console.WriteLine(Encoding.UTF8.GetString(px));
                 //     this.client.Send(px);

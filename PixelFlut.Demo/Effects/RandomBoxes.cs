@@ -15,7 +15,7 @@ namespace PixelFlut.Infrastructure.Effects
             this.random = new Random();
         }
 
-        protected override IEnumerable<OutputPixel> TickInternal()
+        protected override OutputFrame TickInternal()
         {
             var maxOffsetX = CanvasSize.Width - boxSize.Width + 1;
             var maxOffsetY = CanvasSize.Height - boxSize.Height + 1;
@@ -35,11 +35,11 @@ namespace PixelFlut.Infrastructure.Effects
             {
                 for (int x = 0; x < width; x++)
                 {
-                    toReturn[i++] = new OutputPixel(offsetX + x, offsetY + y, color);
+                    toReturn[i++] = new OutputPixel(x, y, color);
                 }
             }
 
-            return toReturn;
+            return new OutputFrame(offsetX, offsetY, toReturn);
         }
     }
 }

@@ -15,6 +15,7 @@ namespace PixelFlut.Infrastructure.Effects.Image
         private readonly Random r;
         private readonly int cardCount;
         private List<(double speedX, double speedY, double offsetX, double offsetY)> states;
+        private uint _i;
 
 
         public DrawImageSolitaire(IList<string> filePaths, int cardCount)
@@ -38,52 +39,79 @@ namespace PixelFlut.Infrastructure.Effects.Image
             }
         }
 
-        protected override IEnumerable<OutputPixel> TickInternal()
+        protected override OutputFrame TickInternal()
         {
-            var toReturn = new List<OutputPixel>();
-            for (int i = 0; i < states.Count; i++)
+            int i;
+            unchecked
             {
-
-                var index = i++ % states.Count;
-
-                var state = states[index];
-
-                state.offsetX += state.speedX;
-                state.offsetY += state.speedY;
-
-                var image = currentImg.Item1;
-
-                if (state.offsetY + image.Height > CanvasSize.Height)
-                {
-                    state.speedY = -state.speedY;
-                }
-                else
-                {
-                    state.speedY += 1;
-                    if (state.speedY > 0)
-                        state.speedY /= 1.04;
-                }
-
-                if (state.offsetX + image.Width > CanvasSize.Width || state.offsetX < 0)
-                {
-                    state.speedX = -state.speedX;
-                }
-
-                if (Math.Abs(state.speedY) < 0.4 && (CanvasSize.Height - (state.offsetY + image.Height) < 10))
-                {
-                    state.speedX = r.Next(100) > 50 ? r.Next(initialSpeedX / 2, initialSpeedX) : -r.Next(initialSpeedX / 2, initialSpeedX);
-                    state.speedY = 0d;
-
-                    state.offsetX = r.Next(0, CanvasSize.Width - image.Width);
-                    state.offsetY = 0d;
-                    this.currentImg = this.images[r.Next(0, this.images.Count)];
-                }
-
-                states[index] = state;
-
-                toReturn.AddRange(DrawImage(currentImg, new Point((int)state.offsetX, (int)state.offsetY)));
+                i = (int)(_i++ % states.Count);
             }
-            return toReturn;
+
+            var state = states[i];
+
+            state.offsetX += state.speedX;
+            state.offsetY += state.speedY;
+
+            var image = currentImg.Item1;
+
+            if (state.offsetY + image.Height > CanvasSize.Height)
+            {
+                state.speedY = -state.speedY;
+            }
+            else
+            {
+                state.speedY += 1;
+                if (state.speedY > 0)
+                    state.speedY /= 1.04;
+            }
+
+            if (state.offsetX + image.Width > CanvasSize.Width || state.offsetX < 0)
+            {
+                state.speedX = -state.speedX;
+            }
+
+            if (Math.Abs(state.speedY) < 0.4 && (CanvasSize.Height - (state.offsetY + image.Height) < 10))
+            {
+                state.speedX = r.Next(100) > 50 ? r.Next(initialSpeedX / 2, initialSpeedX) : -r.Next(initialSpeedX / 2, initialSpeedX);
+                state.speedY = 0d;
+
+                state.offsetX = r.Next(0, CanvasSize.Width - image.Width);
+                state.offsetY = 0d;
+                this.currentImg = this.images[r.Next(0, this.images.Count)];
+            }
+
+            states[i] = state;
+
+            int offsetX;
+            int offsetY;
+
+            if (state.offsetX < 0)
+            {
+                offsetX = 0;
+            }
+            else if (state.offsetX >= CanvasSize.Width)
+            {
+                offsetX = CanvasSize.Width - 1;
+            }
+            else
+            {
+                offsetX = (int)state.offsetX;
+            }
+
+            if (state.offsetY < 0)
+            {
+                offsetY = 0;
+            }
+            else if (state.offsetY >= CanvasSize.Height)
+            {
+                offsetY = CanvasSize.Height - 1;
+            }
+            else
+            {
+                offsetY = (int)state.offsetY;
+            }
+
+            return new OutputFrame(offsetX, offsetY, DrawImage(currentImg, Point.Empty).ToArray());
         }
     }
 }

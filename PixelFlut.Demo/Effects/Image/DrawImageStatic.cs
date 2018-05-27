@@ -11,6 +11,7 @@ namespace PixelFlut.Infrastructure.Effects.Image
         private readonly Tuple<Image<Rgba32>, byte[]> image;
         private readonly Point pos;
         private readonly Random random;
+        private OutputPixel[] renderedImage;
 
         public DrawImageStatic(string filePath, Point p)
         {
@@ -19,9 +20,10 @@ namespace PixelFlut.Infrastructure.Effects.Image
             this.random = new Random();
         }
 
-        protected override IEnumerable<OutputPixel> TickInternal()
+        protected override OutputFrame TickInternal()
         {
-            return DrawImage(this.image, this.pos).OrderBy(x => this.random.Next());
+            OutputPixel[] pixels = renderedImage ?? (renderedImage = DrawImage(this.image, Point.Empty).OrderBy(x => random.Next()).ToList().ToArray());
+            return new OutputFrame(pos.X, pos.Y, pixels);
         }
     }
 }

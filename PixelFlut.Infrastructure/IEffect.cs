@@ -4,7 +4,7 @@ namespace PixelFlut.Infrastructure
 {
     public interface IEffect
     {
-        OutputPixel[] GetPixels();
+        OutputFrame GetPixels();
         void Init(Size canvasSize);
     }
 }

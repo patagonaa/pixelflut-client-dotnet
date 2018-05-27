@@ -30,7 +30,7 @@ namespace PixelFlut.Demo
             //var ep = new DnsEndPoint("displays.local", port);
 
             //var renderService = new PixelFlutLookupTableRenderService();
-            var renderService = new PixelFlutLookupTableUnsafeRenderService();
+            var renderService = new PixelFlutLookupTableUnsafeRenderService(ServerCapabilities.None);
             //var outputService = new PixelFlutOutputService(ep);
 
             var eh = new EffectHost(renderService, ep);

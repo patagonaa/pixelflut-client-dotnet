@@ -6,7 +6,7 @@ namespace PixelFlut.Infrastructure
 
     public interface IRenderService
     {
-        ArraySegment<byte> PreRender(OutputPixel[] pixels);
+        ArraySegment<byte> PreRender(OutputFrame frame);
         IList<KeyValuePair<string, string>> GetDiagnostics();
     }
 }

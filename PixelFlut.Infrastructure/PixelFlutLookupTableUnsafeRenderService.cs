@@ -10,19 +10,32 @@ namespace PixelFlut.Infrastructure
 
     public unsafe class PixelFlutLookupTableUnsafeRenderService : IRenderService, IDisposable
     {
+        private readonly byte* px;
+        private readonly byte* offset;
+        private readonly byte newline;
+        private readonly byte space;
+        private readonly byte** numbers;
+        private readonly byte* hexNumbers;
+        private readonly ServerCapabilities serverCapabilities;
         private readonly List<GCHandle> _gcHandles = new List<GCHandle>();
 
-        public PixelFlutLookupTableUnsafeRenderService()
+        public PixelFlutLookupTableUnsafeRenderService(ServerCapabilities serverCapabilities)
         {
+            this.serverCapabilities = serverCapabilities;
+
             var pxHandle = GCHandle.Alloc(Encoding.ASCII.GetBytes("PX "), GCHandleType.Pinned);
             px = (byte*)pxHandle.AddrOfPinnedObject();
             _gcHandles.Add(pxHandle);
+
+            var offsetHandle = GCHandle.Alloc(Encoding.ASCII.GetBytes("OFFSET "), GCHandleType.Pinned);
+            offset = (byte*)offsetHandle.AddrOfPinnedObject();
+            _gcHandles.Add(offsetHandle);
 
             newline = Encoding.ASCII.GetBytes("\n")[0];
             space = Encoding.ASCII.GetBytes(" ")[0];
             var decNumbers = Enumerable.Range(0, 5000)
                 .Select(x =>
-                    Encoding.ASCII.GetBytes(x.ToString(CultureInfo.InvariantCulture) + " ").Concat(new[] { (byte)0 }).ToArray())
+                    Encoding.ASCII.GetBytes(x.ToString(CultureInfo.InvariantCulture)).Concat(new[] { (byte)0 }).ToArray())
                 .ToArray();
 
             var decNumbersPtrs = decNumbers.Select(x =>
@@ -33,7 +46,7 @@ namespace PixelFlut.Infrastructure
             }).ToArray();
 
             var decNumbersHandle = GCHandle.Alloc(decNumbersPtrs, GCHandleType.Pinned);
-            numbersWithSpace = (byte**)decNumbersHandle.AddrOfPinnedObject();
+            numbers = (byte**)decNumbersHandle.AddrOfPinnedObject();
             _gcHandles.Add(decNumbersHandle);
 
             var hexNumbersHandle = GCHandle.Alloc(Enumerable.Range(0, 256).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray(), GCHandleType.Pinned);
@@ -47,38 +60,79 @@ namespace PixelFlut.Infrastructure
             return toReturn;
         }
 
-        private readonly byte* px;
-        private readonly byte newline;
-        private readonly byte space;
-        private readonly byte** numbersWithSpace;
-        private readonly byte* hexNumbers;
-
-        public ArraySegment<byte> PreRender(OutputPixel[] pixels)
+        public ArraySegment<byte> PreRender(OutputFrame frame)
         {
-            using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22))
+            var pixels = frame.Pixels;
+            var offsetX = frame.OffsetX;
+            var offsetY = frame.OffsetY;
+
+            bool offsetSupported = ((serverCapabilities & ServerCapabilities.Offset) != 0);
+
+            const int offsetLen = 7 + 4 + 1 + 4 + 1;
+
+            using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0)))
             {
                 var len = pixels.Length;
+
+                if (offsetSupported)
+                {
+                    ms.Write(offset, 7);
+                    var xNum = numbers[offsetX];
+                    ms.WriteNullTerminated(xNum);
+                    ms.WriteByte(space);
+                    var yNum = numbers[offsetY];
+                    ms.WriteNullTerminated(yNum);
+                    ms.WriteByte(newline);
+                }
 
                 for (int i = 0; i < len; i++)
                 {
                     var pixel = pixels[i];
-                    ms.Write(px, 3);
-                    var xNum = numbersWithSpace[pixel.X];
-                    ms.WriteNullTerminated(xNum);
 
-                    var yNum = numbersWithSpace[pixel.Y];
+                    int pixelX;
+                    int pixelY;
+
+                    if (offsetSupported)
+                    {
+                        pixelX = pixel.X;
+                        pixelY = pixel.Y;
+                    }
+                    else
+                    {
+                        pixelX = pixel.X + offsetX;
+                        pixelY = pixel.Y + offsetY;
+                    }
+
+                    ms.Write(px, 3);
+                    var xNum = numbers[pixelX];
+                    ms.WriteNullTerminated(xNum);
+                    ms.WriteByte(space);
+
+                    var yNum = numbers[pixelY];
                     ms.WriteNullTerminated(yNum);
+                    ms.WriteByte(space);
 
                     var argbColor = pixel.Color;
 
-                    ms.Write(hexNumbers + (argbColor >> 16 & 0xFF) * 2, 2);
-                    ms.Write(hexNumbers + (argbColor >> 8 & 0xFF) * 2, 2);
-                    ms.Write(hexNumbers + (argbColor & 0xFF) * 2, 2);
-
                     var a = (argbColor >> 24 & 0xFF);
-                    if (a != 255)
+                    var r = (argbColor >> 16 & 0xFF);
+                    var g = (argbColor >> 8 & 0xFF);
+                    var b = (argbColor & 0xFF);
+
+                    if (((serverCapabilities & ServerCapabilities.GreyScale) != 0) && r == b && b == g && a == 255)
                     {
-                        ms.Write(hexNumbers + a * 2, 2);
+                        ms.Write(hexNumbers + (r << 1), 2);
+                    }
+                    else
+                    {
+                        ms.Write(hexNumbers + (r << 1), 2);
+                        ms.Write(hexNumbers + (g << 1), 2);
+                        ms.Write(hexNumbers + (b << 1), 2);
+
+                        if (a != 255)
+                        {
+                            ms.Write(hexNumbers + (a << 1), 2);
+                        }
                     }
                     ms.WriteByte(newline);
                 }
@@ -88,7 +142,10 @@ namespace PixelFlut.Infrastructure
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            foreach (var gcHandle in _gcHandles)
+            {
+                gcHandle.Free();
+            }
         }
     }
 }

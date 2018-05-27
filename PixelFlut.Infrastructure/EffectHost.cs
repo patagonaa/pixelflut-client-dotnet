@@ -29,7 +29,7 @@ namespace PixelFlut.Infrastructure
         private volatile bool renderTooSlow = false;
         private volatile bool outputTooSlow = false;
 
-        private ConcurrentQueue<OutputPixel[]> effectQueue = new ConcurrentQueue<OutputPixel[]>();
+        private ConcurrentQueue<OutputFrame> effectQueue = new ConcurrentQueue<OutputFrame>();
         private ConcurrentQueue<ArraySegment<byte>> renderedQueue = new ConcurrentQueue<ArraySegment<byte>>();
 
         public EffectHost(IRenderService renderService, EndPoint endPoint)
@@ -72,8 +72,7 @@ namespace PixelFlut.Infrastructure
             {
                 if (this.effectQueue.Count < EffectQueueLength)
                 {
-                    OutputPixel[] pixels;
-                    pixels = effect.GetPixels();
+                    OutputFrame pixels = effect.GetPixels();
                     this.effectQueue.Enqueue(pixels);
                 }
                 else
@@ -83,6 +82,8 @@ namespace PixelFlut.Infrastructure
             }
         }
 
+        private const int _numRenderDiagSamples = 1000;
+        private Queue<Tuple<DateTime, int>> _renderDiagSamples = new Queue<Tuple<DateTime, int>>();
         private void Render()
         {
             var taskQueue = new Queue<Task<ArraySegment<byte>>>();
@@ -93,13 +94,26 @@ namespace PixelFlut.Infrastructure
                     outputTooSlow = false;
                     if (taskQueue.Count < RenderThreadCount)
                     {
-                        if (!this.effectQueue.TryDequeue(out var pixels))
+                        if (!this.effectQueue.TryDequeue(out var frame))
                         {
                             effectTooSlow = true;
                             continue;
                         }
                         effectTooSlow = false;
-                        taskQueue.Enqueue(Task.Run(() => this.renderService.PreRender(pixels)));
+                        taskQueue.Enqueue(Task.Run(() =>
+                        {
+                            ArraySegment<byte> arraySegment = this.renderService.PreRender(frame);
+                            lock (_renderDiagSamples)
+                            {
+                                _renderDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, frame.Pixels.Length));
+
+                                if (_renderDiagSamples.Count > _numRenderDiagSamples)
+                                {
+                                    _renderDiagSamples.Dequeue();
+                                }
+                            }
+                            return arraySegment;
+                        }));
                     }
                     else
                     {
@@ -137,8 +151,8 @@ namespace PixelFlut.Infrastructure
             }
         }
 
-        private const int _numSamples = 1000;
-        private Queue<Tuple<DateTime, int>> _diagSamples = new Queue<Tuple<DateTime, int>>();
+        private const int _numOutputDiagSamples = 1000;
+        private Queue<Tuple<DateTime, int>> _outputDiagSamples = new Queue<Tuple<DateTime, int>>();
 
         private void DoOutput(IOutputService outputService)
         {
@@ -149,13 +163,13 @@ namespace PixelFlut.Infrastructure
                     renderTooSlow = false;
                     var sentBytes = outputService.Output(rendered);
                     //var sentBytes = rendered.Count;
-                    lock (_diagSamples)
+                    lock (_outputDiagSamples)
                     {
-                        _diagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
+                        _outputDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
 
-                        if (_diagSamples.Count > _numSamples)
+                        if (_outputDiagSamples.Count > _numOutputDiagSamples)
                         {
-                            _diagSamples.Dequeue();
+                            _outputDiagSamples.Dequeue();
                         }
                     }
                 }
@@ -167,14 +181,35 @@ namespace PixelFlut.Infrastructure
             }
         }
 
-        public IList<KeyValuePair<string, string>> GetOutputDiagnostics()
+        private IList<KeyValuePair<string, string>> GetRenderDiagnostics()
         {
             var toReturn = new List<KeyValuePair<string, string>>();
 
             IList<Tuple<DateTime, int>> diagSamples;
-            lock (_diagSamples)
+            lock (_renderDiagSamples)
             {
-                diagSamples = _diagSamples.ToList();
+                diagSamples = _renderDiagSamples.ToList();
+            }
+            if (diagSamples.Count > 2)
+            {
+                var span = diagSamples.Max(x => x.Item1) - diagSamples.Min(x => x.Item1);
+                var totalPixels = diagSamples.Sum(x => (long)x.Item2);
+
+                var mpixelsPerSecond = (double)totalPixels / span.TotalSeconds / 1_000_000;
+                toReturn.Add(new KeyValuePair<string, string>("Output (MPixels/s)", mpixelsPerSecond.ToString("F2", CultureInfo.InvariantCulture)));
+            }
+
+            return toReturn;
+        }
+
+        private IList<KeyValuePair<string, string>> GetOutputDiagnostics()
+        {
+            var toReturn = new List<KeyValuePair<string, string>>();
+
+            IList<Tuple<DateTime, int>> diagSamples;
+            lock (_outputDiagSamples)
+            {
+                diagSamples = _outputDiagSamples.ToList();
             }
             if (diagSamples.Count > 2)
             {
@@ -214,6 +249,7 @@ namespace PixelFlut.Infrastructure
                 diagnostics.Add(new KeyValuePair<string, string>("Bottleneck", bottleneck));
 
                 diagnostics.AddRange(GetOutputDiagnostics());
+                diagnostics.AddRange(GetRenderDiagnostics());
 
                 Console.WriteLine(string.Join(", ", diagnostics.Select(x => $"{x.Key}: {x.Value}")));
                 Thread.Sleep(500);

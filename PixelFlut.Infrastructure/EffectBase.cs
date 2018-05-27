@@ -15,14 +15,14 @@ namespace PixelFlut.Infrastructure
             this.initialized = true;
         }
 
-        public OutputPixel[] GetPixels()
+        public OutputFrame GetPixels()
         {
             if (!this.initialized)
                 throw new InvalidOperationException("not initialized!");
-            return TickInternal().ToArray();
+            return TickInternal();
         }
 
-        protected abstract IEnumerable<OutputPixel> TickInternal();
+        protected abstract OutputFrame TickInternal();
 
         protected Size CanvasSize { get; private set; }
 

@@ -18,10 +18,10 @@ namespace PixelFlut.Infrastructure.Effects.Image
             return new Tuple<Rgba32Image, byte[]>(image, pixelData);
         }
 
-        protected IEnumerable<OutputPixel> DrawImage(Tuple<Rgba32Image, byte[]> imageData, Point offsetP, bool mirror = false)
+        protected IEnumerable<OutputPixel> DrawImage(Tuple<Rgba32Image, byte[]> imageData, Point offset, bool mirror = false)
         {
-            var offsetX = offsetP.X;
-            var offsetY = offsetP.Y;
+            var offsetX = offset.X;
+            var offsetY = offset.Y;
 
             var canvasSize = this.CanvasSize;
             var image = imageData.Item1;
@@ -34,8 +34,8 @@ namespace PixelFlut.Infrastructure.Effects.Image
             {
                 for (int x = 0; x < width; x++)
                 {
-                    int offset = ((mirror ? width - x - 1 : x) + (y * width)) * 4;
-                    int a = bytes[offset + 3];
+                    int pixelIndex = ((mirror ? width - x - 1 : x) + (y * width)) * 4;
+                    int a = bytes[pixelIndex + 3];
                     if (a == 0)
                         continue;
                     var renderX = x + offsetX;
@@ -43,9 +43,9 @@ namespace PixelFlut.Infrastructure.Effects.Image
                     if (renderX < 0 || renderY < 0 || renderX >= canvasSize.Width || renderY >= canvasSize.Height)
                         continue;
 
-                    int r = bytes[offset];
-                    int g = bytes[offset + 1];
-                    int b = bytes[offset + 2];
+                    int r = bytes[pixelIndex];
+                    int g = bytes[pixelIndex + 1];
+                    int b = bytes[pixelIndex + 2];
 
                     var argb = a << 24 | r << 16 | g << 8 | b;
                     yield return new OutputPixel(x + offsetX, y + offsetY, argb);
