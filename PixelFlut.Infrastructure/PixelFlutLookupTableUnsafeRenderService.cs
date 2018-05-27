@@ -67,6 +67,7 @@ namespace PixelFlut.Infrastructure
             var offsetY = frame.OffsetY;
 
             bool offsetSupported = ((serverCapabilities & ServerCapabilities.Offset) != 0);
+            bool greyscaleSupported = ((serverCapabilities & ServerCapabilities.GreyScale) != 0);
 
             const int offsetLen = 7 + 4 + 1 + 4 + 1;
 
@@ -119,7 +120,7 @@ namespace PixelFlut.Infrastructure
                     var g = (argbColor >> 8 & 0xFF);
                     var b = (argbColor & 0xFF);
 
-                    if (((serverCapabilities & ServerCapabilities.GreyScale) != 0) && r == b && b == g && a == 255)
+                    if (greyscaleSupported && r == b && b == g && a == 255)
                     {
                         ms.Write(hexNumbers + (r << 1), 2);
                     }
