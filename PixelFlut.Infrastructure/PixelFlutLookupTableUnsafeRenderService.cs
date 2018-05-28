@@ -77,59 +77,64 @@ namespace PixelFlut.Infrastructure
 
             var cachingPossible = cacheId != -1 && (offsetSupported || offsetStatic);
 
-            using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0)))
+            if (cachingPossible)
             {
-                var len = pixels.Length;
-
-                if (offsetSupported)
+                byte[] cachedFrame;
+                if (!_cache.TryGetValue(cacheId, out cachedFrame))
                 {
-                    ms.Write(offset, 7);
-                    var xNum = numbers[offsetX];
-                    ms.WriteNullTerminated(xNum);
-                    ms.WriteByte(space);
-                    var yNum = numbers[offsetY];
-                    ms.WriteNullTerminated(yNum);
-                    ms.WriteByte(newline);
+                    Console.WriteLine($"Frame {cacheId} not rendered! rendering...");
+                    using (var cachems = new UnsafeMemoryBuffer(pixels.Length * 22))
+                    {
+                        RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems);
+                        var rendered = cachems.ToArraySegment();
+                        byte[] renderedArray = rendered.ToArray();
+                        _cache[cacheId] = renderedArray;
+                        cachedFrame = renderedArray;
+                    }
                 }
 
-                if (cachingPossible)
+                if (!offsetStatic)
                 {
-                    byte[] cachedFrame;
-                    if (_cache.TryGetValue(cacheId, out cachedFrame))
+                    using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22 + offsetLen))
                     {
-                        if (!offsetStatic)
-                        {
-                            ms.Write(cachedFrame, cachedFrame.Length);
-                        }
-                        else
-                        {
-                            return new ArraySegment<byte>(cachedFrame);
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Frame {cacheId} not rendered! rendering...");
-                        using (var cachems = new UnsafeMemoryBuffer(pixels.Length * 22))
-                        {
-                            RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems, len);
-                            var rendered = cachems.ToArraySegment();
-                            byte[] renderedArray = rendered.ToArray();
-                            _cache[cacheId] = renderedArray;
-                            ms.Write(renderedArray, renderedArray.Length);
-                        }
+                        WriteOffset(offsetX, offsetY, ms);
+                        ms.Write(cachedFrame, cachedFrame.Length);
+                        return ms.ToArraySegment();
                     }
                 }
                 else
                 {
-                    RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, ms, len);
+                    return new ArraySegment<byte>(cachedFrame);
                 }
-
-                return ms.ToArraySegment();
+            }
+            else
+            {
+                using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0)))
+                {
+                    if (offsetSupported)
+                    {
+                        WriteOffset(offsetX, offsetY, ms);
+                    }
+                    RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, ms);
+                    return ms.ToArraySegment();
+                }
             }
         }
 
-        private void RenderPixels(OutputPixel[] pixels, int offsetX, int offsetY, bool offsetSupported, bool greyscaleSupported, UnsafeMemoryBuffer ms, int len)
+        private void WriteOffset(int offsetX, int offsetY, UnsafeMemoryBuffer ms)
         {
+            ms.Write(offset, 7);
+            var xNum = numbers[offsetX];
+            ms.WriteNullTerminated(xNum);
+            ms.WriteByte(space);
+            var yNum = numbers[offsetY];
+            ms.WriteNullTerminated(yNum);
+            ms.WriteByte(newline);
+        }
+
+        private void RenderPixels(OutputPixel[] pixels, int offsetX, int offsetY, bool omitOffset, bool greyscaleSupported, UnsafeMemoryBuffer ms)
+        {
+            var len = pixels.Length;
             for (int i = 0; i < len; i++)
             {
                 var pixel = pixels[i];
@@ -137,7 +142,7 @@ namespace PixelFlut.Infrastructure
                 int pixelX;
                 int pixelY;
 
-                if (offsetSupported)
+                if (omitOffset)
                 {
                     pixelX = pixel.X;
                     pixelY = pixel.Y;
