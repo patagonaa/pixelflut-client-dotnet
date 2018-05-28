@@ -71,7 +71,7 @@ namespace PixelFlut.Infrastructure
             bufferptr[position++] = b;
         }
 
-        public ArraySegment<byte> ToArray()
+        public ArraySegment<byte> ToArraySegment()
         {
             return new ArraySegment<byte>(buffer, 0, position);
         }

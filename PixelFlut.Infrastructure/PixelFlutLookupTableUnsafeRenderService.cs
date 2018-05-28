@@ -19,6 +19,8 @@ namespace PixelFlut.Infrastructure
         private readonly ServerCapabilities serverCapabilities;
         private readonly List<GCHandle> _gcHandles = new List<GCHandle>();
 
+        private readonly IDictionary<int, byte[]> _cache = new Dictionary<int, byte[]>();
+
         public PixelFlutLookupTableUnsafeRenderService(ServerCapabilities serverCapabilities)
         {
             this.serverCapabilities = serverCapabilities;
@@ -65,11 +67,14 @@ namespace PixelFlut.Infrastructure
             var pixels = frame.Pixels;
             var offsetX = frame.OffsetX;
             var offsetY = frame.OffsetY;
+            var cacheId = frame.CacheId;
 
             bool offsetSupported = ((serverCapabilities & ServerCapabilities.Offset) != 0);
             bool greyscaleSupported = ((serverCapabilities & ServerCapabilities.GreyScale) != 0);
 
             const int offsetLen = 7 + 4 + 1 + 4 + 1;
+
+            var cachingPossible = cacheId != -1 && (offsetSupported || frame.OffsetStatic);
 
             using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0)))
             {
@@ -86,58 +91,86 @@ namespace PixelFlut.Infrastructure
                     ms.WriteByte(newline);
                 }
 
-                for (int i = 0; i < len; i++)
+                if (cachingPossible)
                 {
-                    var pixel = pixels[i];
-
-                    int pixelX;
-                    int pixelY;
-
-                    if (offsetSupported)
+                    byte[] cachedFrame;
+                    if (_cache.TryGetValue(cacheId, out cachedFrame))
                     {
-                        pixelX = pixel.X;
-                        pixelY = pixel.Y;
+                        ms.Write(cachedFrame, cachedFrame.Length);
                     }
                     else
                     {
-                        pixelX = pixel.X + offsetX;
-                        pixelY = pixel.Y + offsetY;
-                    }
-
-                    ms.Write(px, 3);
-                    var xNum = numbers[pixelX];
-                    ms.WriteNullTerminated(xNum);
-                    ms.WriteByte(space);
-
-                    var yNum = numbers[pixelY];
-                    ms.WriteNullTerminated(yNum);
-                    ms.WriteByte(space);
-
-                    var argbColor = pixel.Color;
-
-                    var a = (argbColor >> 24 & 0xFF);
-                    var r = (argbColor >> 16 & 0xFF);
-                    var g = (argbColor >> 8 & 0xFF);
-                    var b = (argbColor & 0xFF);
-
-                    if (greyscaleSupported && r == b && b == g && a == 255)
-                    {
-                        ms.Write(hexNumbers + (r << 1), 2);
-                    }
-                    else
-                    {
-                        ms.Write(hexNumbers + (r << 1), 2);
-                        ms.Write(hexNumbers + (g << 1), 2);
-                        ms.Write(hexNumbers + (b << 1), 2);
-
-                        if (a != 255)
+                        using (var cachems = new UnsafeMemoryBuffer(pixels.Length * 22))
                         {
-                            ms.Write(hexNumbers + (a << 1), 2);
+                            RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems, len);
+                            var rendered = cachems.ToArraySegment();
+                            byte[] renderedArray = rendered.ToArray();
+                            _cache[cacheId] = renderedArray;
+                            ms.Write(renderedArray, renderedArray.Length);
                         }
                     }
-                    ms.WriteByte(newline);
                 }
-                return ms.ToArray();
+                else
+                {
+                    RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, ms, len);
+                }
+
+                return ms.ToArraySegment();
+            }
+        }
+
+        private void RenderPixels(OutputPixel[] pixels, int offsetX, int offsetY, bool offsetSupported, bool greyscaleSupported, UnsafeMemoryBuffer ms, int len)
+        {
+            for (int i = 0; i < len; i++)
+            {
+                var pixel = pixels[i];
+
+                int pixelX;
+                int pixelY;
+
+                if (offsetSupported)
+                {
+                    pixelX = pixel.X;
+                    pixelY = pixel.Y;
+                }
+                else
+                {
+                    pixelX = pixel.X + offsetX;
+                    pixelY = pixel.Y + offsetY;
+                }
+
+                ms.Write(px, 3);
+                var xNum = numbers[pixelX];
+                ms.WriteNullTerminated(xNum);
+                ms.WriteByte(space);
+
+                var yNum = numbers[pixelY];
+                ms.WriteNullTerminated(yNum);
+                ms.WriteByte(space);
+
+                var argbColor = pixel.Color;
+
+                var a = (argbColor >> 24 & 0xFF);
+                var r = (argbColor >> 16 & 0xFF);
+                var g = (argbColor >> 8 & 0xFF);
+                var b = (argbColor & 0xFF);
+
+                if (greyscaleSupported && r == b && b == g && a == 255)
+                {
+                    ms.Write(hexNumbers + (r << 1), 2);
+                }
+                else
+                {
+                    ms.Write(hexNumbers + (r << 1), 2);
+                    ms.Write(hexNumbers + (g << 1), 2);
+                    ms.Write(hexNumbers + (b << 1), 2);
+
+                    if (a != 255)
+                    {
+                        ms.Write(hexNumbers + (a << 1), 2);
+                    }
+                }
+                ms.WriteByte(newline);
             }
         }
 
