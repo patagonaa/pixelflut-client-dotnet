@@ -68,13 +68,14 @@ namespace PixelFlut.Infrastructure
             var offsetX = frame.OffsetX;
             var offsetY = frame.OffsetY;
             var cacheId = frame.CacheId;
+            var offsetStatic = frame.OffsetStatic;
 
             bool offsetSupported = ((serverCapabilities & ServerCapabilities.Offset) != 0);
             bool greyscaleSupported = ((serverCapabilities & ServerCapabilities.GreyScale) != 0);
 
             const int offsetLen = 7 + 4 + 1 + 4 + 1;
 
-            var cachingPossible = cacheId != -1 && (offsetSupported || frame.OffsetStatic);
+            var cachingPossible = cacheId != -1 && (offsetSupported || offsetStatic);
 
             using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0)))
             {
@@ -96,7 +97,14 @@ namespace PixelFlut.Infrastructure
                     byte[] cachedFrame;
                     if (_cache.TryGetValue(cacheId, out cachedFrame))
                     {
-                        ms.Write(cachedFrame, cachedFrame.Length);
+                        if (!offsetStatic)
+                        {
+                            ms.Write(cachedFrame, cachedFrame.Length);
+                        }
+                        else
+                        {
+                            return new ArraySegment<byte>(cachedFrame);
+                        }
                     }
                     else
                     {
