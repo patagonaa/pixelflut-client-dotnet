@@ -100,6 +100,7 @@ namespace PixelFlut.Infrastructure
                     }
                     else
                     {
+                        Console.WriteLine($"Frame {cacheId} not rendered! rendering...")
                         using (var cachems = new UnsafeMemoryBuffer(pixels.Length * 22))
                         {
                             RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems, len);
