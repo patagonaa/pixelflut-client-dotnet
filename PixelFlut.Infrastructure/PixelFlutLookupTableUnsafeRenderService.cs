@@ -56,13 +56,13 @@ namespace PixelFlut.Infrastructure
             _gcHandles.Add(decNumbersHandle);
             Console.Write(".");
 
-            byte[] hexColorsBytes = Enumerable.Range(0, 0xFFFFFF).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X6"))).ToArray();
+            byte[] hexColorsBytes = Enumerable.Range(0, 0xFFFFFFF + 1).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X6"))).ToArray();
             var hexColorsHandle = GCHandle.Alloc(hexColorsBytes, GCHandleType.Pinned);
             hexColors = (byte*)hexColorsHandle.AddrOfPinnedObject();
             _gcHandles.Add(hexColorsHandle);
             Console.Write(".");
 
-            byte[] hexNumbersBytes = Enumerable.Range(0, 0xFF).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray();
+            byte[] hexNumbersBytes = Enumerable.Range(0, 0xFF + 1).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray();
             var hexNumbersHandle = GCHandle.Alloc(hexNumbersBytes, GCHandleType.Pinned);
             hexNumbers = (byte*)hexNumbersHandle.AddrOfPinnedObject();
             _gcHandles.Add(hexNumbersHandle);
