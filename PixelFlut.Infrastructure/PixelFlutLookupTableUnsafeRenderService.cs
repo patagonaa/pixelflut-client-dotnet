@@ -15,6 +15,7 @@ namespace PixelFlut.Infrastructure
         private readonly byte newline;
         private readonly byte space;
         private readonly byte** numbers;
+        private readonly byte* hexColors;
         private readonly byte* hexNumbers;
         private readonly ServerCapabilities serverCapabilities;
         private readonly List<GCHandle> _gcHandles = new List<GCHandle>();
@@ -51,7 +52,13 @@ namespace PixelFlut.Infrastructure
             numbers = (byte**)decNumbersHandle.AddrOfPinnedObject();
             _gcHandles.Add(decNumbersHandle);
 
-            var hexNumbersHandle = GCHandle.Alloc(Enumerable.Range(0, 256).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray(), GCHandleType.Pinned);
+            byte[] hexColorsBytes = Enumerable.Range(0, 0xFFFFFF).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X6"))).ToArray();
+            var hexColorsHandle = GCHandle.Alloc(hexColorsBytes, GCHandleType.Pinned);
+            hexColors = (byte*)hexColorsHandle.AddrOfPinnedObject();
+            _gcHandles.Add(hexColorsHandle);
+
+            byte[] hexNumbersBytes = Enumerable.Range(0, 0xFF).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray();
+            var hexNumbersHandle = GCHandle.Alloc(hexNumbersBytes, GCHandleType.Pinned);
             hexNumbers = (byte*)hexNumbersHandle.AddrOfPinnedObject();
             _gcHandles.Add(hexNumbersHandle);
         }
@@ -164,28 +171,33 @@ namespace PixelFlut.Infrastructure
 
                 var argbColor = pixel.Color;
 
-                var a = (argbColor >> 24 & 0xFF);
-                var r = (argbColor >> 16 & 0xFF);
-                var g = (argbColor >> 8 & 0xFF);
-                var b = (argbColor & 0xFF);
+                var a = (byte)(argbColor >> 24 & 0xFF);
 
-                if (greyscaleSupported && r == b && b == g && a == 255)
+                if (greyscaleSupported && IsGreyScale(argbColor, out var grey) && a == 0xFF)
                 {
-                    ms.Write(hexNumbers + (r << 1), 2);
+                    ms.Write(hexNumbers + (grey << 1), 2);
                 }
                 else
                 {
-                    ms.Write(hexNumbers + (r << 1), 2);
-                    ms.Write(hexNumbers + (g << 1), 2);
-                    ms.Write(hexNumbers + (b << 1), 2);
+                    ms.Write(hexColors + (argbColor & 0x00FFFFFF) * 6, 6);
 
-                    if (a != 255)
+                    if (a != 0xFF)
                     {
                         ms.Write(hexNumbers + (a << 1), 2);
                     }
                 }
                 ms.WriteByte(newline);
             }
+        }
+
+        private bool IsGreyScale(int argbColor, out byte grey)
+        {
+            var r = (byte)(argbColor >> 16 & 0xFF);
+            var g = (byte)(argbColor >> 8 & 0xFF);
+            var b = (byte)(argbColor & 0xFF);
+            grey = r;
+
+            return r == b && r == g;
         }
 
         public void Dispose()
