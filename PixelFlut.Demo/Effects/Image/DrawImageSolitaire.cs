@@ -11,6 +11,7 @@ namespace PixelFlut.Infrastructure.Effects.Image
         const int initialSpeedX = 5;
 
         private readonly List<Tuple<Image<Rgba32>, byte[]>> images;
+        private readonly List<OutputPixel[]> imagesCache = new List<OutputPixel[]>();
         private readonly Random r;
         private readonly int cardCount;
         private List<(double speedX, double speedY, double offsetX, double offsetY, int imgIdx)> states;
@@ -30,10 +31,15 @@ namespace PixelFlut.Infrastructure.Effects.Image
         {
             base.Init(canvasSize);
             states.Clear();
-            var image = images[0].Item1;
+            var currentImage = images[0].Item1;
             for (int i = 0; i < this.cardCount; i++)
             {
-                states.Add((initialSpeedX, 0, r.Next(0, canvasSize.Width - image.Width), r.Next(0, canvasSize.Height - image.Height), 0));
+                states.Add((initialSpeedX, 0, r.Next(0, canvasSize.Width - currentImage.Width), r.Next(0, canvasSize.Height - currentImage.Height), 0));
+            }
+
+            foreach (var image in images)
+            {
+                imagesCache.Add(DrawImage(image, Point.Empty).ToArray());
             }
         }
 
@@ -110,7 +116,9 @@ namespace PixelFlut.Infrastructure.Effects.Image
                 offsetY = (int)state.offsetY;
             }
 
-            return new OutputFrame(offsetX, offsetY, DrawImage(image, Point.Empty).ToArray(), imageIdx, false);
+            var cachedImage = imagesCache[imageIdx];
+
+            return new OutputFrame(offsetX, offsetY, cachedImage, imageIdx, false);
         }
     }
 }
