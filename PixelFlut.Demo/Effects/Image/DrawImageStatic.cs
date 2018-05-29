@@ -22,7 +22,7 @@ namespace PixelFlut.Infrastructure.Effects.Image
 
         protected override OutputFrame TickInternal()
         {
-            OutputPixel[] pixels = renderedImage ?? (renderedImage = DrawImage(this.image, Point.Empty).OrderBy(x => random.Next()).ToList().ToArray());
+            OutputPixel[] pixels = renderedImage ?? (renderedImage = DrawImage(this.image, Point.Empty).ToArray());
             return new OutputFrame(pos.X, pos.Y, pixels, 0, true);
         }
     }
