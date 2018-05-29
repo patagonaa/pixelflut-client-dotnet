@@ -22,7 +22,7 @@ namespace PixelFlut.Infrastructure.Effects
                 }
             }
 
-            return new OutputFrame(0, 0, toReturn);
+            return new OutputFrame(0, 0, toReturn, 0, true);
         }
     }
 }
