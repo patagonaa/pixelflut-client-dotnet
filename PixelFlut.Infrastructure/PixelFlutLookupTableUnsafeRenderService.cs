@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -56,11 +57,25 @@ namespace PixelFlut.Infrastructure
             _gcHandles.Add(decNumbersHandle);
             Console.Write(".");
 
-            byte[] hexColorsBytes = Enumerable.Range(0, 0xFFFFFF + 1).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X6"))).ToArray();
-            var hexColorsHandle = GCHandle.Alloc(hexColorsBytes, GCHandleType.Pinned);
-            hexColors = (byte*)hexColorsHandle.AddrOfPinnedObject();
-            _gcHandles.Add(hexColorsHandle);
-            Console.Write(".");
+            using (var ms = new MemoryStream(6*0xFFFFFF))
+            {
+                using (var sw = new StreamWriter(ms, Encoding.ASCII))
+                {
+                    for (int i = 0; i <= 0xFFFFFF; i++)
+                    {
+                        sw.Write(i.ToString("X6"));
+                        if (i % 50000 == 0)
+                        {
+                            Console.Write(".");
+                        }
+                    }
+
+                    var hexColorsHandle = GCHandle.Alloc(ms.ToArray(), GCHandleType.Pinned);
+                    hexColors = (byte*)hexColorsHandle.AddrOfPinnedObject();
+                    _gcHandles.Add(hexColorsHandle);
+                    Console.Write(".");
+                }
+            }
 
             byte[] hexNumbersBytes = Enumerable.Range(0, 0xFF + 1).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray();
             var hexNumbersHandle = GCHandle.Alloc(hexNumbersBytes, GCHandleType.Pinned);
