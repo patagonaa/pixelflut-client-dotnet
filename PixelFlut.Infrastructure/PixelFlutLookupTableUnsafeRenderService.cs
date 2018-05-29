@@ -26,13 +26,16 @@ namespace PixelFlut.Infrastructure
         {
             this.serverCapabilities = serverCapabilities;
 
+            Console.Write("Precalculating Strings");
             var pxHandle = GCHandle.Alloc(Encoding.ASCII.GetBytes("PX "), GCHandleType.Pinned);
             px = (byte*)pxHandle.AddrOfPinnedObject();
             _gcHandles.Add(pxHandle);
+            Console.Write(".");
 
             var offsetHandle = GCHandle.Alloc(Encoding.ASCII.GetBytes("OFFSET "), GCHandleType.Pinned);
             offset = (byte*)offsetHandle.AddrOfPinnedObject();
             _gcHandles.Add(offsetHandle);
+            Console.Write(".");
 
             newline = Encoding.ASCII.GetBytes("\n")[0];
             space = Encoding.ASCII.GetBytes(" ")[0];
@@ -51,16 +54,21 @@ namespace PixelFlut.Infrastructure
             var decNumbersHandle = GCHandle.Alloc(decNumbersPtrs, GCHandleType.Pinned);
             numbers = (byte**)decNumbersHandle.AddrOfPinnedObject();
             _gcHandles.Add(decNumbersHandle);
+            Console.Write(".");
 
             byte[] hexColorsBytes = Enumerable.Range(0, 0xFFFFFF).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X6"))).ToArray();
             var hexColorsHandle = GCHandle.Alloc(hexColorsBytes, GCHandleType.Pinned);
             hexColors = (byte*)hexColorsHandle.AddrOfPinnedObject();
             _gcHandles.Add(hexColorsHandle);
+            Console.Write(".");
 
             byte[] hexNumbersBytes = Enumerable.Range(0, 0xFF).SelectMany(x => Encoding.ASCII.GetBytes(x.ToString("X2"))).ToArray();
             var hexNumbersHandle = GCHandle.Alloc(hexNumbersBytes, GCHandleType.Pinned);
             hexNumbers = (byte*)hexNumbersHandle.AddrOfPinnedObject();
             _gcHandles.Add(hexNumbersHandle);
+            Console.Write(".");
+            Console.WriteLine();
+            Console.WriteLine("done!");
         }
 
         public IList<KeyValuePair<string, string>> GetDiagnostics()
