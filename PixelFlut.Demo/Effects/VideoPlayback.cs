@@ -1,10 +1,8 @@
-﻿using PixelFlut.Infrastructure;
-using PixelFlut.Infrastructure.Effects.Image;
+﻿#if NET461
+using PixelFlut.Infrastructure;
 using Accord.Video.FFMPEG;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Drawing;
+using PixelFlut.Demo.Effects.Image;
 
 namespace PixelFlut.Demo.Effects
 {
@@ -22,12 +20,13 @@ namespace PixelFlut.Demo.Effects
 
         protected override OutputFrame TickInternal()
         {
-            if (i == this.reader.FrameCount)
+            Bitmap frame;
+            while ((frame = this.reader.ReadVideoFrame(i++)) == null)
             {
                 i = 0;
             }
 
-            using (var frame = this.reader.ReadVideoFrame(i++))
+            using (frame)
             {
                 return new OutputFrame(0, 0, DrawImage(frame, Point.Empty), -1, true);
             }
@@ -41,3 +40,4 @@ namespace PixelFlut.Demo.Effects
         }
     }
 }
+#endif

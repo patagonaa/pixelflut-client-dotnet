@@ -1,8 +1,9 @@
+using PixelFlut.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace PixelFlut.Infrastructure.Effects
+namespace PixelFlut.Demo.Effects
 {
     public class Void : EffectBase
     {
@@ -10,7 +11,7 @@ namespace PixelFlut.Infrastructure.Effects
         {
             var height = CanvasSize.Height;
             var width = CanvasSize.Width;
-            var color = Color.Black.ToArgb();
+            var color = Color.White.ToArgb();
 
             var toReturn = new OutputPixel[width * height];
             var i = 0;

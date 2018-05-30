@@ -3,12 +3,11 @@ using System.Drawing;
 using Rgba32Image = SixLabors.ImageSharp.Image<SixLabors.ImageSharp.Rgba32>;
 using ImageExtensions = SixLabors.ImageSharp.ImageExtensions;
 using System.Collections.Generic;
-using SixLabors.ImageSharp;
-using System.Linq;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using PixelFlut.Infrastructure;
 
-namespace PixelFlut.Infrastructure.Effects.Image
+namespace PixelFlut.Demo.Effects.Image
 {
     public abstract class DrawImageBase : EffectBase
     {

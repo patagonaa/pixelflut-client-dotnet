@@ -1,8 +1,9 @@
-﻿using System;
+﻿using PixelFlut.Infrastructure;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace PixelFlut.Infrastructure.Effects
+namespace PixelFlut.Demo.Effects
 {
     public class RandomBoxes : EffectBase
     {

@@ -3,8 +3,9 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Drawing;
 using SixLabors.ImageSharp;
+using PixelFlut.Infrastructure;
 
-namespace PixelFlut.Infrastructure.Effects.Image
+namespace PixelFlut.Demo.Effects.Image
 {
     public class DrawImageSolitaire : DrawImageBase
     {
