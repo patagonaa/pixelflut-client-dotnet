@@ -5,6 +5,8 @@ using ImageExtensions = SixLabors.ImageSharp.ImageExtensions;
 using System.Collections.Generic;
 using SixLabors.ImageSharp;
 using System.Linq;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 
 namespace PixelFlut.Infrastructure.Effects.Image
 {
@@ -16,6 +18,52 @@ namespace PixelFlut.Infrastructure.Effects.Image
             var image = SixLabors.ImageSharp.Image.Load(filePath);
             var pixelData = ImageExtensions.SavePixelData(image);
             return new Tuple<Rgba32Image, byte[]>(image, pixelData);
+        }
+
+        protected OutputPixel[] DrawImage(Bitmap image, Point offset, bool mirror = false)
+        {
+            var offsetX = offset.X;
+            var offsetY = offset.Y;
+
+            var canvasSize = this.CanvasSize;
+
+            if (image.PixelFormat != PixelFormat.Format24bppRgb)
+            {
+                throw new ArgumentException("image must be 24 bpp RGB");
+            }
+
+            var bitmapData = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var dataLength = bitmapData.Stride * bitmapData.Height;
+            var bytes = new byte[dataLength];
+            Marshal.Copy(bitmapData.Scan0, bytes, 0, dataLength);
+            image.UnlockBits(bitmapData);
+
+            var width = image.Width;
+            var height = image.Height;
+
+            var toReturn = new OutputPixel[width * height];
+
+            int i = 0;
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int pixelIndex = ((mirror ? width - x - 1 : x) * 3 + (y * bitmapData.Stride));
+                    var renderX = x + offsetX;
+                    var renderY = y + offsetY;
+                    if (renderX < 0 || renderY < 0 || renderX >= canvasSize.Width || renderY >= canvasSize.Height)
+                        continue;
+
+                    int r = bytes[pixelIndex + 2];
+                    int g = bytes[pixelIndex + 1];
+                    int b = bytes[pixelIndex];
+
+                    var argb = 0xFF << 24 | r << 16 | g << 8 | b;
+                    toReturn[i++] = new OutputPixel(x + offsetX, y + offsetY, argb);
+                }
+            }
+
+            return toReturn;
         }
 
         protected IEnumerable<OutputPixel> DrawImage(Tuple<Rgba32Image, byte[]> imageData, Point offset, bool mirror = false)

@@ -24,6 +24,10 @@ namespace PixelFlut.Infrastructure
 
         protected abstract OutputFrame TickInternal();
 
+        public virtual void Dispose()
+        {
+        }
+
         protected Size CanvasSize { get; private set; }
 
         private bool initialized;

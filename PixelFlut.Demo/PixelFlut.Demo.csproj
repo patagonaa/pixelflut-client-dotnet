@@ -9,6 +9,7 @@
     <ProjectReference Include="../PixelFlut.Infrastructure/PixelFlut.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Accord.Video.FFMPEG.x64" Version="3.8.2-alpha" />
     <PackageReference Include="OpenCvSharp3-AnyCPU" Version="3.4.1.20180319" />
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0002" />
     <PackageReference Include="System.Drawing.Common" Version="4.5.0-preview1-26216-02" />
