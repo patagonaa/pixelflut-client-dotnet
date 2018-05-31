@@ -57,7 +57,7 @@ namespace PixelFlut.Infrastructure
             _gcHandles.Add(decNumbersHandle);
             Console.Write(".");
 
-            using (var ms = new MemoryStream(6*0xFFFFFF))
+            using (var ms = new MemoryStream(6*(0xFFFFFF+1)))
             {
                 using (var sw = new StreamWriter(ms, Encoding.ASCII))
                 {
@@ -69,6 +69,7 @@ namespace PixelFlut.Infrastructure
                             Console.Write(".");
                         }
                     }
+                    sw.Flush();
 
                     var hexColorsHandle = GCHandle.Alloc(ms.ToArray(), GCHandleType.Pinned);
                     hexColors = (byte*)hexColorsHandle.AddrOfPinnedObject();
