@@ -2,19 +2,17 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <LangVersion>7.1</LangVersion>
-    <Configurations>Debug;Release;Release_Net461</Configurations>
+    <Configurations>Debug;Release;Release_Net461;Debug_Net461</Configurations>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'Release_Net461'">
+  <PropertyGroup Condition="('$(Configuration)' == 'Release_Net461') OR ('$(Configuration)' == 'Debug_Net461')">
     <TargetFramework>net461</TargetFramework>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)' != 'Release_Net461'">
+  <PropertyGroup Condition="('$(Configuration)' != 'Release_Net461') AND ('$(Configuration)' != 'Debug_Net461')">
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
-  <ItemGroup Condition="'$(Configuration)' == 'Release_Net461'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
     <PackageReference Include="Accord.Video.FFMPEG.x64" Version="3.8.2-alpha" />
     <PackageReference Include="OpenCvSharp3-AnyCPU" Version="3.4.1.20180319" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)' != 'Release_Net461'">
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../PixelFlut.Infrastructure/PixelFlut.Infrastructure.csproj" />

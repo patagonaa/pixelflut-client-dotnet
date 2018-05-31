@@ -32,13 +32,17 @@ namespace PixelFlut.Demo.Effects.Image
             }
 
             var bitmapData = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-            var dataLength = bitmapData.Stride * bitmapData.Height;
+            var stride = bitmapData.Stride;
+            var dataLength = stride * bitmapData.Height;
             var bytes = new byte[dataLength];
             Marshal.Copy(bitmapData.Scan0, bytes, 0, dataLength);
             image.UnlockBits(bitmapData);
 
             var width = image.Width;
             var height = image.Height;
+
+            var canvasWidth = canvasSize.Width;
+            var canvasHeight = canvasSize.Height;
 
             var toReturn = new OutputPixel[width * height];
 
@@ -47,10 +51,10 @@ namespace PixelFlut.Demo.Effects.Image
             {
                 for (int x = 0; x < width; x++)
                 {
-                    int pixelIndex = ((mirror ? width - x - 1 : x) * 3 + (y * bitmapData.Stride));
+                    int pixelIndex = ((mirror ? width - x - 1 : x) * 3 + (y * stride));
                     var renderX = x + offsetX;
                     var renderY = y + offsetY;
-                    if (renderX < 0 || renderY < 0 || renderX >= canvasSize.Width || renderY >= canvasSize.Height)
+                    if (renderX < 0 || renderY < 0 || renderX >= canvasWidth || renderY >= canvasHeight)
                         continue;
 
                     int r = bytes[pixelIndex + 2];
@@ -58,7 +62,10 @@ namespace PixelFlut.Demo.Effects.Image
                     int b = bytes[pixelIndex];
 
                     var argb = 0xFF << 24 | r << 16 | g << 8 | b;
-                    toReturn[i++] = new OutputPixel(x + offsetX, y + offsetY, argb);
+                    toReturn[i].X = (x + offsetX);
+                    toReturn[i].Y = (y + offsetY);
+                    toReturn[i].Color = argb;
+                    i++;
                 }
             }
 
@@ -77,6 +84,9 @@ namespace PixelFlut.Demo.Effects.Image
             var width = image.Width;
             var height = image.Height;
 
+            var canvasWidth = canvasSize.Width;
+            var canvasHeight = canvasSize.Height;
+
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
@@ -87,7 +97,7 @@ namespace PixelFlut.Demo.Effects.Image
                         continue;
                     var renderX = x + offsetX;
                     var renderY = y + offsetY;
-                    if (renderX < 0 || renderY < 0 || renderX >= canvasSize.Width || renderY >= canvasSize.Height)
+                    if (renderX < 0 || renderY < 0 || renderX >= canvasWidth || renderY >= canvasHeight)
                         continue;
 
                     int r = bytes[pixelIndex];

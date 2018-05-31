@@ -18,8 +18,8 @@ namespace PixelFlut.Infrastructure
             Color = color.ToArgb();
         }
 
-        public readonly int X;
-        public readonly int Y;
-        public readonly int Color;
+        public int X;
+        public int Y;
+        public int Color;
     }
 }
