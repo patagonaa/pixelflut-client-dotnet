@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -12,25 +11,19 @@ namespace PixelFlut.Infrastructure
 {
     public class EffectHost
     {
-        private const int EffectQueueLength = 10;
-        private const int RenderQueueLength = 20;
-        private const int RenderThreadCount = 16;
-        private const int OutputThreadCount = 2;
+        private const int EffectFilterBufferLength = 10;
+        private const int FilterRenderBufferLength = 10;
+        private const int RenderOutputBufferLength = 10;
 
-        private IList<Thread> effectThreads = new List<Thread>();
-        private Thread renderThread;
-        private Thread outputThread;
-        private Thread logThread;
         private CancellationTokenSource cancellationTokenSource;
         private readonly IRenderService renderService;
         private readonly EndPoint endPoint;
         private readonly IOutputService outputService;
-        private volatile bool effectTooSlow = false;
-        private volatile bool renderTooSlow = false;
-        private volatile bool outputTooSlow = false;
 
-        private ConcurrentQueue<OutputFrame> effectQueue = new ConcurrentQueue<OutputFrame>();
-        private ConcurrentQueue<ArraySegment<byte>> renderedQueue = new ConcurrentQueue<ArraySegment<byte>>();
+        private List<Task> _tasks = new List<Task>();
+        private TaskFactory _tf = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.None);
+        private BlockingCollection<OutputFrame> _effectRenderBuffer = new BlockingCollection<OutputFrame>(FilterRenderBufferLength);
+        private BlockingCollection<ArraySegment<byte>> _renderOutputBuffer = new BlockingCollection<ArraySegment<byte>>(RenderOutputBufferLength);
 
         public EffectHost(IRenderService renderService, EndPoint endPoint)
         {
@@ -42,144 +35,95 @@ namespace PixelFlut.Infrastructure
 
         public void Start()
         {
-            this.renderThread = new Thread(Render);
-            this.renderThread.Start();
-
-            this.outputThread = new Thread(Output);
-            this.outputThread.Priority = ThreadPriority.AboveNormal;
-            this.outputThread.Start();
-
-            this.logThread = new Thread(Log);
-            this.logThread.Start();
+            var renderTask = _tf.StartNew(() => { Render(this.renderService, this._effectRenderBuffer, this._renderOutputBuffer); });
+            var outputTask = _tf.StartNew(() => { Output(this.outputService, this._renderOutputBuffer); });
+            var logTask = _tf.StartNew(() => Log());
+            _tasks.AddRange(new[] { renderTask, outputTask, logTask });
         }
 
-        public void Stop()
+        public async Task Stop()
         {
-            cancellationTokenSource?.Cancel();
-            foreach (var effectThread in effectThreads)
-            {
-                effectThread.Join();
-            }
-            renderThread?.Join();
-            outputThread?.Join();
-
-            this.cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.Cancel();
+            await Task.WhenAll(_tasks);
         }
 
-        private void Effect(IEffect effect)
+        private void Effect(IEffect effect, BlockingCollection<OutputFrame> outputFrames)
         {
             while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
-                if (this.effectQueue.Count < EffectQueueLength)
+                OutputFrame frame = effect.GetPixels();
+                if (frame.Pixels == null)
                 {
-                    OutputFrame pixels = effect.GetPixels();
-                    this.effectQueue.Enqueue(pixels);
+                    outputFrames.CompleteAdding();
+                    break;
                 }
-                else
-                {
-                    Thread.Sleep(1);
-                }
+                outputFrames.Add(frame);
             }
+        }
+
+        private void Filter(IFilter filter, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<OutputFrame> outputFrames)
+        {
+            foreach (var inputFrame in inputFrames.GetConsumingEnumerable())
+            {
+                var frame = inputFrame;
+                frame = filter.ApplyFilter(frame);
+                outputFrames.Add(frame);
+            }
+            outputFrames.CompleteAdding();
         }
 
         private const int _numRenderDiagSamples = 1000;
         private Queue<Tuple<DateTime, int>> _renderDiagSamples = new Queue<Tuple<DateTime, int>>();
-        private void Render()
+        private void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<ArraySegment<byte>> outputBytes)
         {
-            var taskQueue = new Queue<Task<ArraySegment<byte>>>();
-            while (!cancellationTokenSource.Token.IsCancellationRequested)
+            var tasksQueue = new Queue<Task<ArraySegment<byte>>>();
+            foreach (var frame in inputFrames.GetConsumingEnumerable())
             {
-                if (this.renderedQueue.Count < RenderQueueLength)
+                tasksQueue.Enqueue(Task.Run(() =>
                 {
-                    outputTooSlow = false;
-                    if (taskQueue.Count < RenderThreadCount)
+                    ArraySegment<byte> arraySegment = renderService.PreRender(frame);
+                    lock (_renderDiagSamples)
                     {
-                        if (!this.effectQueue.TryDequeue(out var frame))
-                        {
-                            effectTooSlow = true;
-                            continue;
-                        }
-                        effectTooSlow = false;
-                        taskQueue.Enqueue(Task.Run(() =>
-                        {
-                            ArraySegment<byte> arraySegment = this.renderService.PreRender(frame);
-                            lock (_renderDiagSamples)
-                            {
-                                _renderDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, frame.Pixels.Length));
+                        _renderDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, frame.Pixels.Length));
 
-                                if (_renderDiagSamples.Count > _numRenderDiagSamples)
-                                {
-                                    _renderDiagSamples.Dequeue();
-                                }
-                            }
-                            return arraySegment;
-                        }));
+                        if (_renderDiagSamples.Count > _numRenderDiagSamples)
+                        {
+                            _renderDiagSamples.Dequeue();
+                        }
                     }
-                    else
-                    {
-                        var task = taskQueue.Dequeue();
-                        task.Wait();
-                        this.renderedQueue.Enqueue(task.Result);
-                    }
-                }
-                else
+                    return arraySegment;
+                }));
+
+                if(tasksQueue.Count > 16)
                 {
-                    outputTooSlow = true;
-                    Thread.Sleep(1);
+                    var task = tasksQueue.Dequeue();
+                    task.Wait();
+                    outputBytes.Add(task.Result);
                 }
             }
+            outputBytes.CompleteAdding();
         }
 
-        private void Output()
+        private void Output(IOutputService outputService, BlockingCollection<ArraySegment<byte>> inputBytes)
         {
-            if (OutputThreadCount > 1)
+            foreach (var bytes in inputBytes.GetConsumingEnumerable())
             {
-                var threads = new List<Thread>();
-                for (int i = 0; i < OutputThreadCount; i++)
+                var sentBytes = outputService.Output(bytes);
+                //var sentBytes = bytes.Count;
+                lock (_outputDiagSamples)
                 {
-                    var os = new PixelFlutOutputService(this.endPoint);
-                    var thr = new Thread(() => DoOutput(os));
-                    thr.Priority = ThreadPriority.AboveNormal;
-                    threads.Add(thr);
-                    thr.Start();
+                    _outputDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
+
+                    if (_outputDiagSamples.Count > _numOutputDiagSamples)
+                    {
+                        _outputDiagSamples.Dequeue();
+                    }
                 }
-                threads.ForEach(x => x.Join());
-            }
-            else
-            {
-                DoOutput(this.outputService);
             }
         }
 
         private const int _numOutputDiagSamples = 1000;
         private Queue<Tuple<DateTime, int>> _outputDiagSamples = new Queue<Tuple<DateTime, int>>();
-
-        private void DoOutput(IOutputService outputService)
-        {
-            while (!cancellationTokenSource.Token.IsCancellationRequested)
-            {
-                if (this.renderedQueue.TryDequeue(out var rendered))
-                {
-                    renderTooSlow = false;
-                    var sentBytes = outputService.Output(rendered);
-                    //var sentBytes = rendered.Count;
-                    lock (_outputDiagSamples)
-                    {
-                        _outputDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
-
-                        if (_outputDiagSamples.Count > _numOutputDiagSamples)
-                        {
-                            _outputDiagSamples.Dequeue();
-                        }
-                    }
-                }
-                else
-                {
-                    renderTooSlow = true;
-                    Thread.Sleep(1);
-                }
-            }
-        }
 
         private IList<KeyValuePair<string, string>> GetRenderDiagnostics()
         {
@@ -229,24 +173,8 @@ namespace PixelFlut.Infrastructure
             while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
                 var diagnostics = new List<KeyValuePair<string, string>>();
-                diagnostics.Add(new KeyValuePair<string, string>("RenderBuf", this.effectQueue.Count.ToString("D3", CultureInfo.InvariantCulture)));
-                diagnostics.Add(new KeyValuePair<string, string>("OutBuf", this.renderedQueue.Count.ToString("D3", CultureInfo.InvariantCulture)));
-                var bottleneck = "";
-
-                if (effectTooSlow)
-                {
-                    bottleneck = "effect";
-                }
-                else if (renderTooSlow)
-                {
-                    bottleneck = "render";
-                }
-                else if (outputTooSlow)
-                {
-                    bottleneck = "output";
-                }
-
-                diagnostics.Add(new KeyValuePair<string, string>("Bottleneck", bottleneck));
+                diagnostics.Add(new KeyValuePair<string, string>("RenderBuf", this._effectRenderBuffer.Count.ToString("D3", CultureInfo.InvariantCulture)));
+                diagnostics.Add(new KeyValuePair<string, string>("OutBuf", this._renderOutputBuffer.Count.ToString("D3", CultureInfo.InvariantCulture)));
 
                 diagnostics.AddRange(GetOutputDiagnostics());
                 diagnostics.AddRange(GetRenderDiagnostics());
@@ -256,13 +184,24 @@ namespace PixelFlut.Infrastructure
             }
         }
 
-        public void AddEffect(IEffect effect)
+        public void AddEffect(IEffect effect, params IFilter[] filters)
         {
-            var effectThread = new Thread(() => Effect(effect));
-            effectThread.Priority = ThreadPriority.Highest;
+            var effectBuffer = filters.Length == 0 ? this._effectRenderBuffer : new BlockingCollection<OutputFrame>(EffectFilterBufferLength);
 
             effect.Init(this.outputService.GetSize());
-            effectThread.Start();
+            var effectTask = _tf.StartNew(() => { Effect(effect, effectBuffer); });
+            this._tasks.Add(effectTask);
+
+            BlockingCollection<OutputFrame> filterInBuffer = effectBuffer;
+            for (int i = 0; i < filters.Length; i++)
+            {
+                var filter = filters[i];
+                var filterOutBuffer = i == filters.Length - 1 ? this._effectRenderBuffer : new BlockingCollection<OutputFrame>(EffectFilterBufferLength);
+                var thisFilterInBuffer = filterInBuffer;
+                var filterTask = _tf.StartNew(() => { Filter(filter, thisFilterInBuffer, filterOutBuffer); });
+                this._tasks.Add(filterTask);
+                filterInBuffer = filterOutBuffer;
+            }
         }
     }
 }
