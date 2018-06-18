@@ -72,7 +72,7 @@ namespace PixelFlut.Infrastructure
             outputFrames.CompleteAdding();
         }
 
-        private const int _numRenderDiagSamples = 1000;
+        private const int _numRenderDiagSamples = 100;
         private Queue<Tuple<DateTime, int>> _renderDiagSamples = new Queue<Tuple<DateTime, int>>();
         private void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<ArraySegment<byte>> outputBytes)
         {
@@ -122,7 +122,7 @@ namespace PixelFlut.Infrastructure
             }
         }
 
-        private const int _numOutputDiagSamples = 1000;
+        private const int _numOutputDiagSamples = 100;
         private Queue<Tuple<DateTime, int>> _outputDiagSamples = new Queue<Tuple<DateTime, int>>();
 
         private IList<KeyValuePair<string, string>> GetRenderDiagnostics()
@@ -141,6 +141,8 @@ namespace PixelFlut.Infrastructure
 
                 var mpixelsPerSecond = (double)totalPixels / span.TotalSeconds / 1_000_000;
                 toReturn.Add(new KeyValuePair<string, string>("Output (MPixels/s)", mpixelsPerSecond.ToString("F2", CultureInfo.InvariantCulture)));
+                var fps = diagSamples.Count / span.TotalSeconds;
+                toReturn.Add(new KeyValuePair<string, string>("Output (Frames/s)", fps.ToString("F2", CultureInfo.InvariantCulture)));
             }
 
             return toReturn;

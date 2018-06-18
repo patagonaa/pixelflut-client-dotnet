@@ -1,5 +1,6 @@
 ﻿using PixelFlut.Infrastructure;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Runtime.CompilerServices;
 
 namespace PixelFlut.Demo.Filters
@@ -34,7 +35,10 @@ namespace PixelFlut.Demo.Filters
                 var newPixel = outputPixels[i];
 
                 if (!(this.frameCount % KeyFrameAfterFrames == 0) && ColorsEqual(oldPixel, newPixel))
+                {
+                    //newPixel = new OutputPixel(newPixel.X, newPixel.Y, Color.Magenta.ToArgb());
                     continue;
+                }
                 lastFrame[i] = newPixel;
                 toReturn.Add(newPixel);
             }
@@ -45,6 +49,8 @@ namespace PixelFlut.Demo.Filters
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool ColorsEqual(OutputPixel oldPixel, OutputPixel newPixel)
         {
+            const int threshold = 10;
+
             var c1 = oldPixel.Color;
             var c2 = newPixel.Color;
 
@@ -52,19 +58,19 @@ namespace PixelFlut.Demo.Filters
                 return true;
 
             var diff = (c1 & 0xFF) - (c2 & 0xFF);
-            if (diff > 10 || diff < -10)
+            if (diff > threshold || diff < -threshold)
                 return false;
             c1 >>= 8;
             c2 >>= 8;
 
             diff = (c1 & 0xFF) - (c2 & 0xFF);
-            if (diff > 10 || diff < -10)
+            if (diff > threshold || diff < -threshold)
                 return false;
             c1 >>= 8;
             c2 >>= 8;
 
             diff = (c1 & 0xFF) - (c2 & 0xFF);
-            if (diff > 10 || diff < -10)
+            if (diff > threshold || diff < -threshold)
                 return false;
 
             return true;
