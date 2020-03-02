@@ -15,7 +15,7 @@ namespace PixelFlut.Infrastructure
         private const int EffectQueueLength = 10;
         private const int RenderQueueLength = 20;
         private const int RenderThreadCount = 16;
-        private const int OutputThreadCount = 2;
+        private const int OutputThreadCount = 4;
 
         private IList<Thread> effectThreads = new List<Thread>();
         private Thread renderThread;
