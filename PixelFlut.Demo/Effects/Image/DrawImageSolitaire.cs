@@ -22,10 +22,23 @@ namespace PixelFlut.Demo.Effects.Image
 
         public DrawImageSolitaire(IList<string> filePaths, int cardCount)
         {
-            images = filePaths.Select(x => {
-                var bitmap = new Bitmap(new Bitmap(x));
-                return bitmap.Clone(new Rectangle(Point.Empty, bitmap.Size), PixelFormat.Format24bppRgb);
-                }).ToList();
+            images = filePaths.Select(path =>
+            {
+                // copy image to fix pixel format
+                using (var bitmapSrc = new Bitmap(path))
+                {
+                    var bitmapDest = new Bitmap(bitmapSrc.Width, bitmapSrc.Height, PixelFormat.Format24bppRgb);
+
+                    for (int y = 0; y < bitmapSrc.Height; y++)
+                    {
+                        for (int x = 0; x < bitmapSrc.Width; x++)
+                        {
+                            bitmapDest.SetPixel(x, y, bitmapSrc.GetPixel(x, y));
+                        }
+                    }
+                    return bitmapDest;
+                }
+            }).ToList();
             this.r = new Random();
             states = new List<(double speedX, double speedY, double offsetX, double offsetY, int imgIdx)>();
             this.cardCount = cardCount;

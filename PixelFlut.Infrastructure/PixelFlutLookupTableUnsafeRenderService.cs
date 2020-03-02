@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -21,7 +22,7 @@ namespace PixelFlut.Infrastructure
         private readonly ServerCapabilities serverCapabilities;
         private readonly List<GCHandle> _gcHandles = new List<GCHandle>();
 
-        private readonly IDictionary<int, byte[]> _cache = new Dictionary<int, byte[]>();
+        private readonly IDictionary<int, byte[]> _cache = new ConcurrentDictionary<int, byte[]>();
 
         public PixelFlutLookupTableUnsafeRenderService(ServerCapabilities serverCapabilities)
         {
@@ -57,7 +58,7 @@ namespace PixelFlut.Infrastructure
             _gcHandles.Add(decNumbersHandle);
             Console.Write(".");
 
-            using (var ms = new MemoryStream(6*(0xFFFFFF+1)))
+            using (var ms = new MemoryStream(6 * (0xFFFFFF + 1)))
             {
                 using (var sw = new StreamWriter(ms, Encoding.ASCII))
                 {
@@ -111,8 +112,10 @@ namespace PixelFlut.Infrastructure
             if (cachingPossible)
             {
                 byte[] cachedFrame;
+
                 if (!_cache.TryGetValue(cacheId, out cachedFrame))
                 {
+
                     Console.WriteLine($"Frame {cacheId} not rendered! rendering...");
                     using (var cachems = new UnsafeMemoryBuffer(pixels.Length * 22))
                     {

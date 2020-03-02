@@ -37,7 +37,7 @@ namespace PixelFlut.Demo
             //eh.AddEffect(new RandomBoxes(new Size(50, 50)));
             //eh.AddEffect(new RandomBoxes(new Size(500, 500)));
             //eh.SetEffect(new DrawImageStatic("/home/patagona/Stuff/cyber.jpg", Point.Empty));
-            eh.AddEffect(new DrawImageSolitaire(Directory.GetFiles("Resources\\cards"), 32));
+            eh.AddEffect(new DrawImageSolitaire(Directory.GetFiles("Resources/cards"), 32));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/solitaire.png"}, 50));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/white.png", "/home/patagona/Stuff/black.png"}, 2));
             //eh.SetEffect(new Infrastructure.Effects.Void());
