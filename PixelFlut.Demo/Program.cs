@@ -13,8 +13,9 @@ using Rgba32Image = SixLabors.ImageSharp.Image<SixLabors.ImageSharp.Rgba32>;
 using ImageExtensions = SixLabors.ImageSharp.ImageExtensions;
 using System.Net.Sockets;
 using System.Diagnostics;
-using PixelFlut.Infrastructure.Effects;
-using PixelFlut.Infrastructure.Effects.Image;
+using PixelFlut.Demo.Effects;
+using PixelFlut.Demo.Effects.Image;
+using System.IO;
 
 namespace PixelFlut.Demo
 {
@@ -23,21 +24,21 @@ namespace PixelFlut.Demo
         static void Main(string[] args)
         {
             var r = new Random();
-            var ip = IPAddress.Parse("10.214.11.105");
-            var port = 1234;
+            var ip = IPAddress.Parse("192.168.14.16");
+            var port = 8080;
 
             var ep = new IPEndPoint(ip, port);
-            //var ep = new DnsEndPoint("displays.local", port);
+            //var ep = new DnsEndPoint("tv.shack", port);
 
             //var renderService = new PixelFlutLookupTableRenderService();
             var renderService = new PixelFlutLookupTableUnsafeRenderService(ServerCapabilities.None);
             //var outputService = new PixelFlutOutputService(ep);
 
             var eh = new EffectHost(renderService, ep);
-            eh.AddEffect(new RandomBoxes(new Size(500, 500)));
-            eh.AddEffect(new RandomBoxes(new Size(500, 500)));
+            //eh.AddEffect(new RandomBoxes(new Size(50, 50)));
+            //eh.AddEffect(new RandomBoxes(new Size(500, 500)));
             //eh.SetEffect(new DrawImageStatic("/home/patagona/Stuff/cyber.jpg", Point.Empty));
-            //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/cyber.jpg"}, 1));
+            eh.AddEffect(new DrawImageSolitaire(Directory.GetFiles("Resources\\cards"), 32));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/solitaire.png"}, 50));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/white.png", "/home/patagona/Stuff/black.png"}, 2));
             //eh.SetEffect(new Infrastructure.Effects.Void());
