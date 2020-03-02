@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using SixLabors.ImageSharp;
 using PixelFlut.Infrastructure;
+using System.Drawing.Imaging;
 
 namespace PixelFlut.Demo.Effects.Image
 {
@@ -11,7 +12,7 @@ namespace PixelFlut.Demo.Effects.Image
     {
         const int initialSpeedX = 5;
 
-        private readonly List<Tuple<Image<Rgba32>, byte[]>> images;
+        private readonly List<Bitmap> images;
         private readonly List<OutputPixel[]> imagesCache = new List<OutputPixel[]>();
         private readonly Random r;
         private readonly int cardCount;
@@ -21,7 +22,10 @@ namespace PixelFlut.Demo.Effects.Image
 
         public DrawImageSolitaire(IList<string> filePaths, int cardCount)
         {
-            images = filePaths.Select(x => GetImageData(x)).ToList();
+            images = filePaths.Select(x => {
+                var bitmap = new Bitmap(new Bitmap(x));
+                return bitmap.Clone(new Rectangle(Point.Empty, bitmap.Size), PixelFormat.Format24bppRgb);
+                }).ToList();
             this.r = new Random();
             states = new List<(double speedX, double speedY, double offsetX, double offsetY, int imgIdx)>();
             this.cardCount = cardCount;
@@ -32,7 +36,7 @@ namespace PixelFlut.Demo.Effects.Image
         {
             base.Init(canvasSize);
             states.Clear();
-            var currentImage = images[0].Item1;
+            var currentImage = images[0];
             for (int i = 0; i < this.cardCount; i++)
             {
                 states.Add((initialSpeedX, 0, r.Next(0, canvasSize.Width - currentImage.Width), r.Next(0, canvasSize.Height - currentImage.Height), 0));
@@ -60,7 +64,7 @@ namespace PixelFlut.Demo.Effects.Image
             var imageIdx = state.imgIdx;
             var image = images[imageIdx];
 
-            if (state.offsetY + image.Item1.Height > CanvasSize.Height)
+            if (state.offsetY + image.Height > CanvasSize.Height)
             {
                 state.speedY = -state.speedY;
             }
@@ -71,17 +75,17 @@ namespace PixelFlut.Demo.Effects.Image
                     state.speedY /= 1.04;
             }
 
-            if (state.offsetX + image.Item1.Width > CanvasSize.Width || state.offsetX < 0)
+            if (state.offsetX + image.Width > CanvasSize.Width || state.offsetX < 0)
             {
                 state.speedX = -state.speedX;
             }
 
-            if (Math.Abs(state.speedY) < 0.4 && (CanvasSize.Height - (state.offsetY + image.Item1.Height) < 10))
+            if (Math.Abs(state.speedY) < 0.4 && (CanvasSize.Height - (state.offsetY + image.Height) < 10))
             {
                 state.speedX = r.Next(100) > 50 ? r.Next(initialSpeedX / 2, initialSpeedX) : -r.Next(initialSpeedX / 2, initialSpeedX);
                 state.speedY = 0d;
 
-                state.offsetX = r.Next(0, CanvasSize.Width - image.Item1.Width);
+                state.offsetX = r.Next(0, CanvasSize.Width - image.Width);
                 state.offsetY = 0d;
                 state.imgIdx = r.Next(0, this.images.Count);
             }
