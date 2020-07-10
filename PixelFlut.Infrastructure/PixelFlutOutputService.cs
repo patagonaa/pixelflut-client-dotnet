@@ -10,12 +10,12 @@ using System.Threading;
 
 namespace PixelFlut.Infrastructure
 {
-    public class PixelFlutOutputService : IOutputService
+    public class PixelFlutTcpOutputService : IOutputService
     {
         private Socket client;
         private readonly EndPoint endPoint;
 
-        public PixelFlutOutputService(EndPoint endPoint)
+        public PixelFlutTcpOutputService(EndPoint endPoint)
         {
             this.client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             this.endPoint = endPoint;

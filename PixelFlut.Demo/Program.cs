@@ -5,6 +5,7 @@ using PixelFlut.Infrastructure;
 using PixelFlut.Demo.Effects.Image;
 using System.IO;
 using System.Threading.Tasks;
+using System.Drawing;
 
 namespace PixelFlut.Demo
 {
@@ -20,9 +21,10 @@ namespace PixelFlut.Demo
 
             //var renderService = new PixelFlutLookupTableRenderService();
             var renderService = new PixelFlutLookupTableUnsafeRenderService(ServerCapabilities.None);
-            //var outputService = new PixelFlutOutputService(ep);
+            var outputService = new PixelFlutNullOutputService(new Size(1920, 1080));
+            //var outputService = new PixelFlutTcpOutputService(ep);
 
-            var eh = new EffectHost(renderService, ep);
+            var eh = new EffectHost(renderService, outputService);
             //eh.AddEffect(new RandomBoxes(new Size(50, 50)));
             //eh.AddEffect(new RandomBoxes(new Size(500, 500)));
             //eh.SetEffect(new DrawImageStatic("/home/patagona/Stuff/cyber.jpg", Point.Empty));

@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,26 +10,25 @@ namespace PixelFlut.Infrastructure
 {
     public class EffectHost
     {
-        private const int EffectFilterBufferLength = 10;
-        private const int FilterRenderBufferLength = 10;
-        private const int RenderOutputBufferLength = 10;
+        private const int EffectFilterBufferLength = 20;
+        private const int FilterRenderBufferLength = 20;
+        private const int RenderOutputBufferLength = 20;
+        private const bool FrameOrderImportant = true;
 
         private CancellationTokenSource cancellationTokenSource;
         private readonly IRenderService renderService;
-        private readonly EndPoint endPoint;
         private readonly IOutputService outputService;
 
         private List<Task> _tasks = new List<Task>();
         private TaskFactory _tf = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.None);
         private BlockingCollection<OutputFrame> _effectRenderBuffer = new BlockingCollection<OutputFrame>(FilterRenderBufferLength);
-        private BlockingCollection<ArraySegment<byte>> _renderOutputBuffer = new BlockingCollection<ArraySegment<byte>>(RenderOutputBufferLength);
+        private BlockingCollection<Tuple<uint, ArraySegment<byte>>> _renderOutputBuffer = new BlockingCollection<Tuple<uint, ArraySegment<byte>>>(RenderOutputBufferLength);
 
-        public EffectHost(IRenderService renderService, EndPoint endPoint)
+        public EffectHost(IRenderService renderService, IOutputService outputService)
         {
             this.cancellationTokenSource = new CancellationTokenSource();
             this.renderService = renderService;
-            this.outputService = new PixelFlutOutputService(endPoint);
-            this.endPoint = endPoint;
+            this.outputService = outputService;
         }
 
         public void Start()
@@ -72,50 +70,81 @@ namespace PixelFlut.Infrastructure
             outputFrames.CompleteAdding();
         }
 
+        private int _sequenceNumber = 0;
+
         private const int _numRenderDiagSamples = 100;
         private Queue<Tuple<DateTime, int>> _renderDiagSamples = new Queue<Tuple<DateTime, int>>();
-        private void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<ArraySegment<byte>> outputBytes)
+        private void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<Tuple<uint, ArraySegment<byte>>> outputBytes)
         {
-            var tasksQueue = new Queue<Task<ArraySegment<byte>>>();
-            foreach (var frame in inputFrames.GetConsumingEnumerable())
+            const int numRenderThreads = 6;
+
+            for (int i = 0; i < numRenderThreads; i++)
             {
-                tasksQueue.Enqueue(Task.Run(() =>
+                _tf.StartNew(() =>
                 {
-                    ArraySegment<byte> arraySegment = renderService.PreRender(frame);
-                    lock (_renderDiagSamples)
+                    foreach (var frame in inputFrames.GetConsumingEnumerable())
                     {
-                        _renderDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, frame.Pixels.Length));
+                        var sequenceNumber = Interlocked.Increment(ref _sequenceNumber);
 
-                        if (_renderDiagSamples.Count > _numRenderDiagSamples)
+                        ArraySegment<byte> arraySegment = renderService.PreRender(frame);
+                        lock (_renderDiagSamples)
                         {
-                            _renderDiagSamples.Dequeue();
-                        }
-                    }
-                    return arraySegment;
-                }));
+                            _renderDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, frame.Pixels.Length));
 
-                if(tasksQueue.Count > 16)
-                {
-                    var task = tasksQueue.Dequeue();
-                    task.Wait();
-                    outputBytes.Add(task.Result);
-                }
+                            if (_renderDiagSamples.Count > _numRenderDiagSamples)
+                            {
+                                _renderDiagSamples.Dequeue();
+                            }
+                        }
+                        outputBytes.Add(new Tuple<uint, ArraySegment<byte>>((uint)sequenceNumber, arraySegment));
+                    }
+
+                    outputBytes.CompleteAdding();
+                });
             }
-            outputBytes.CompleteAdding();
         }
 
-        private void Output(IOutputService outputService, BlockingCollection<ArraySegment<byte>> inputBytes)
+        private void Output(IOutputService outputService, BlockingCollection<Tuple<uint, ArraySegment<byte>>> inputBytes)
         {
-            foreach (var bytes in inputBytes.GetConsumingEnumerable())
+            var lastSequenceNumber = 0U;
+            var reorderBuffer = new ConcurrentDictionary<uint, ArraySegment<byte>>();
+            foreach (var queueFrame in inputBytes.GetConsumingEnumerable())
             {
-                var sentBytes = outputService.Output(bytes);
-                lock (_outputDiagSamples)
-                {
-                    _outputDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
+                int sentBytes = 0;
 
-                    if (_outputDiagSamples.Count > _numOutputDiagSamples)
+                if (FrameOrderImportant)
+                {
+                    var nextSequenceNumber = lastSequenceNumber + 1;
+                    if (queueFrame.Item1 <= nextSequenceNumber)
                     {
-                        _outputDiagSamples.Dequeue();
+                        lastSequenceNumber = queueFrame.Item1;
+                        sentBytes += outputService.Output(queueFrame.Item2);
+                    }
+                    else
+                    {
+                        reorderBuffer.TryAdd(queueFrame.Item1, queueFrame.Item2);
+                    }
+
+                    while (reorderBuffer.TryRemove(lastSequenceNumber + 1, out var bufferFrame))
+                    {
+                        lastSequenceNumber++;
+                        sentBytes += outputService.Output(bufferFrame);
+                    }
+                }
+                else
+                {
+                    sentBytes += outputService.Output(queueFrame.Item2);
+                }
+                if (sentBytes > 0)
+                {
+                    lock (_outputDiagSamples)
+                    {
+                        _outputDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
+
+                        if (_outputDiagSamples.Count > _numOutputDiagSamples)
+                        {
+                            _outputDiagSamples.Dequeue();
+                        }
                     }
                 }
             }
