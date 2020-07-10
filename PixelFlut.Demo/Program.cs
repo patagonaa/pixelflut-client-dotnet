@@ -1,27 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using Point = System.Drawing.Point;
-using Size = System.Drawing.Size;
-using System.Linq;
 using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
 using PixelFlut.Infrastructure;
-using Image = SixLabors.ImageSharp.Image;
-using Rgba32Image = SixLabors.ImageSharp.Image<SixLabors.ImageSharp.Rgba32>;
-using ImageExtensions = SixLabors.ImageSharp.ImageExtensions;
-using System.Net.Sockets;
-using System.Diagnostics;
-using PixelFlut.Demo.Effects;
 using PixelFlut.Demo.Effects.Image;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Demo
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var r = new Random();
             var ip = IPAddress.Parse("172.31.248.128");
@@ -47,7 +36,7 @@ namespace PixelFlut.Demo
             System.AppDomain.CurrentDomain.ProcessExit += (e, evArgs) => cts.Cancel();
             cts.Token.WaitHandle.WaitOne();
 
-            eh.Stop();
+            await eh.Stop();
             renderService.Dispose();
         }
     }
