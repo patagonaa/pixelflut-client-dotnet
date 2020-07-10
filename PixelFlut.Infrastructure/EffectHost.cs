@@ -13,16 +13,16 @@ namespace PixelFlut.Infrastructure
         private const int EffectFilterBufferLength = 20;
         private const int FilterRenderBufferLength = 20;
         private const int RenderOutputBufferLength = 20;
-        private const bool FrameOrderImportant = true;
 
         private CancellationTokenSource cancellationTokenSource;
         private readonly IRenderService renderService;
         private readonly IOutputService outputService;
 
         private List<Task> _tasks = new List<Task>();
-        private TaskFactory _tf = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.None);
+        private TaskFactory _tfLongRunning = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.None);
+        private TaskFactory _tfShort = new TaskFactory(TaskCreationOptions.PreferFairness, TaskContinuationOptions.None);
         private BlockingCollection<OutputFrame> _effectRenderBuffer = new BlockingCollection<OutputFrame>(FilterRenderBufferLength);
-        private BlockingCollection<Tuple<uint, ArraySegment<byte>>> _renderOutputBuffer = new BlockingCollection<Tuple<uint, ArraySegment<byte>>>(RenderOutputBufferLength);
+        private BlockingCollection<ArraySegment<byte>> _renderOutputBuffer = new BlockingCollection<ArraySegment<byte>>(RenderOutputBufferLength);
 
         public EffectHost(IRenderService renderService, IOutputService outputService)
         {
@@ -33,9 +33,9 @@ namespace PixelFlut.Infrastructure
 
         public void Start()
         {
-            var renderTask = _tf.StartNew(() => { Render(this.renderService, this._effectRenderBuffer, this._renderOutputBuffer); });
-            var outputTask = _tf.StartNew(() => { Output(this.outputService, this._renderOutputBuffer); });
-            var logTask = _tf.StartNew(() => Log());
+            var renderTask = _tfLongRunning.StartNew(() => { Render(this.renderService, this._effectRenderBuffer, this._renderOutputBuffer); });
+            var outputTask = _tfLongRunning.StartNew(() => { Output(this.outputService, this._renderOutputBuffer); });
+            var logTask = _tfLongRunning.StartNew(() => Log());
             _tasks.AddRange(new[] { renderTask, outputTask, logTask });
         }
 
@@ -70,81 +70,50 @@ namespace PixelFlut.Infrastructure
             outputFrames.CompleteAdding();
         }
 
-        private int _sequenceNumber = 0;
-
         private const int _numRenderDiagSamples = 100;
         private Queue<Tuple<DateTime, int>> _renderDiagSamples = new Queue<Tuple<DateTime, int>>();
-        private void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<Tuple<uint, ArraySegment<byte>>> outputBytes)
+        private void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<ArraySegment<byte>> outputBytes)
         {
-            const int numRenderThreads = 6;
-
-            for (int i = 0; i < numRenderThreads; i++)
+            var tasksQueue = new Queue<Task<ArraySegment<byte>>>();
+            foreach (var frame in inputFrames.GetConsumingEnumerable())
             {
-                _tf.StartNew(() =>
+                tasksQueue.Enqueue(_tfShort.StartNew(() =>
                 {
-                    foreach (var frame in inputFrames.GetConsumingEnumerable())
+                    ArraySegment<byte> arraySegment = renderService.PreRender(frame);
+                    lock (_renderDiagSamples)
                     {
-                        var sequenceNumber = Interlocked.Increment(ref _sequenceNumber);
+                        _renderDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, frame.Pixels.Length));
 
-                        ArraySegment<byte> arraySegment = renderService.PreRender(frame);
-                        lock (_renderDiagSamples)
+                        if (_renderDiagSamples.Count > _numRenderDiagSamples)
                         {
-                            _renderDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, frame.Pixels.Length));
-
-                            if (_renderDiagSamples.Count > _numRenderDiagSamples)
-                            {
-                                _renderDiagSamples.Dequeue();
-                            }
+                            _renderDiagSamples.Dequeue();
                         }
-                        outputBytes.Add(new Tuple<uint, ArraySegment<byte>>((uint)sequenceNumber, arraySegment));
                     }
+                    return arraySegment;
+                }));
 
-                    outputBytes.CompleteAdding();
-                });
+                if (tasksQueue.Count > 16)
+                {
+                    var task = tasksQueue.Dequeue();
+                    task.Wait();
+                    outputBytes.Add(task.Result);
+                }
             }
+            outputBytes.CompleteAdding();
         }
 
-        private void Output(IOutputService outputService, BlockingCollection<Tuple<uint, ArraySegment<byte>>> inputBytes)
+        private void Output(IOutputService outputService, BlockingCollection<ArraySegment<byte>> inputBytes)
         {
-            var lastSequenceNumber = 0U;
-            var reorderBuffer = new ConcurrentDictionary<uint, ArraySegment<byte>>();
-            foreach (var queueFrame in inputBytes.GetConsumingEnumerable())
+            foreach (var bytes in inputBytes.GetConsumingEnumerable())
             {
-                int sentBytes = 0;
-
-                if (FrameOrderImportant)
+                var sentBytes = outputService.Output(bytes);
+                lock (_outputDiagSamples)
                 {
-                    var nextSequenceNumber = lastSequenceNumber + 1;
-                    if (queueFrame.Item1 <= nextSequenceNumber)
-                    {
-                        lastSequenceNumber = queueFrame.Item1;
-                        sentBytes += outputService.Output(queueFrame.Item2);
-                    }
-                    else
-                    {
-                        reorderBuffer.TryAdd(queueFrame.Item1, queueFrame.Item2);
-                    }
+                    _outputDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
 
-                    while (reorderBuffer.TryRemove(lastSequenceNumber + 1, out var bufferFrame))
+                    if (_outputDiagSamples.Count > _numOutputDiagSamples)
                     {
-                        lastSequenceNumber++;
-                        sentBytes += outputService.Output(bufferFrame);
-                    }
-                }
-                else
-                {
-                    sentBytes += outputService.Output(queueFrame.Item2);
-                }
-                if (sentBytes > 0)
-                {
-                    lock (_outputDiagSamples)
-                    {
-                        _outputDiagSamples.Enqueue(new Tuple<DateTime, int>(DateTime.UtcNow, sentBytes));
-
-                        if (_outputDiagSamples.Count > _numOutputDiagSamples)
-                        {
-                            _outputDiagSamples.Dequeue();
-                        }
+                        _outputDiagSamples.Dequeue();
                     }
                 }
             }
@@ -219,7 +188,7 @@ namespace PixelFlut.Infrastructure
             var effectBuffer = filters.Length == 0 ? this._effectRenderBuffer : new BlockingCollection<OutputFrame>(EffectFilterBufferLength);
 
             effect.Init(this.outputService.GetSize());
-            var effectTask = _tf.StartNew(() => { Effect(effect, effectBuffer); });
+            var effectTask = _tfLongRunning.StartNew(() => { Effect(effect, effectBuffer); });
             this._tasks.Add(effectTask);
 
             BlockingCollection<OutputFrame> filterInBuffer = effectBuffer;
@@ -228,7 +197,7 @@ namespace PixelFlut.Infrastructure
                 var filter = filters[i];
                 var filterOutBuffer = i == filters.Length - 1 ? this._effectRenderBuffer : new BlockingCollection<OutputFrame>(EffectFilterBufferLength);
                 var thisFilterInBuffer = filterInBuffer;
-                var filterTask = _tf.StartNew(() => { Filter(filter, thisFilterInBuffer, filterOutBuffer); });
+                var filterTask = _tfLongRunning.StartNew(() => { Filter(filter, thisFilterInBuffer, filterOutBuffer); });
                 this._tasks.Add(filterTask);
                 filterInBuffer = filterOutBuffer;
             }
