@@ -35,9 +35,9 @@ namespace PixelFlut.Infrastructure
             var i = length;
             while (--i >= 0)
             {
-                bufferptr[i + Position] = source[i];
+                bufferptr[i + position] = source[i];
             }
-            Position += length;
+            position += length;
         }
 
         public void Write(byte* source, int length)
@@ -50,9 +50,9 @@ namespace PixelFlut.Infrastructure
             var i = length;
             while (--i >= 0)
             {
-                bufferptr[i + Position] = source[i];
+                bufferptr[i + position] = source[i];
             }
-            Position += length;
+            position += length;
         }
 
         public void WriteNullTerminated(byte* source)
@@ -61,9 +61,9 @@ namespace PixelFlut.Infrastructure
             byte chr = 0;
             while ((chr = source[i]) != 0)
             {
-                bufferptr[Position] = chr;
+                bufferptr[position] = chr;
                 i++;
-                Position++;
+                position++;
             }
         }
 
@@ -72,12 +72,12 @@ namespace PixelFlut.Infrastructure
 #if DEBUG
             Contract.Assert(position + 1 < bufferSize, $"Buffer too small! {position} {bufferSize}");
 #endif
-            bufferptr[Position++] = b;
+            bufferptr[position++] = b;
         }
 
         public ArraySegment<byte> ToArraySegment()
         {
-            return new ArraySegment<byte>(buffer, 0, Position);
+            return new ArraySegment<byte>(buffer, 0, position);
         }
 
         public void Dispose()
