@@ -118,24 +118,20 @@ namespace PixelFlut.Infrastructure
                 {
 
                     Console.WriteLine($"Frame {cacheId} not rendered! rendering...");
-                    using (var cachems = GetBuffer(pixels.Length * 22))
-                    {
-                        RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems);
-                        var rendered = cachems.ToArraySegment();
-                        byte[] renderedArray = rendered.ToArray();
-                        _cache[cacheId] = renderedArray;
-                        cachedFrame = renderedArray;
-                    }
+                    var cachems = GetBuffer(pixels.Length * 22);
+                    RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems);
+                    var rendered = cachems.ToArraySegment();
+                    byte[] renderedArray = rendered.ToArray();
+                    _cache[cacheId] = renderedArray;
+                    cachedFrame = renderedArray;
                 }
 
                 if (!offsetStatic)
                 {
-                    using (var ms = GetBuffer(pixels.Length * 22 + offsetLen))
-                    {
-                        WriteOffset(offsetX, offsetY, ms);
-                        ms.Write(cachedFrame, cachedFrame.Length);
-                        return ms.ToArraySegment();
-                    }
+                    var ms = GetBuffer(pixels.Length * 22 + offsetLen);
+                    WriteOffset(offsetX, offsetY, ms);
+                    ms.Write(cachedFrame, cachedFrame.Length);
+                    return ms.ToArraySegment();
                 }
                 else
                 {
@@ -144,15 +140,13 @@ namespace PixelFlut.Infrastructure
             }
             else
             {
-                using (var ms = GetBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0)))
+                var ms = GetBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0));
+                if (offsetSupported)
                 {
-                    if (offsetSupported)
-                    {
-                        WriteOffset(offsetX, offsetY, ms);
-                    }
-                    RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, ms);
-                    return ms.ToArraySegment();
+                    WriteOffset(offsetX, offsetY, ms);
                 }
+                RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, ms);
+                return ms.ToArraySegment();
             }
         }
 
