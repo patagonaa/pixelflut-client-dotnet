@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace PixelFlut.Infrastructure
 {
@@ -117,7 +118,7 @@ namespace PixelFlut.Infrastructure
                 {
 
                     Console.WriteLine($"Frame {cacheId} not rendered! rendering...");
-                    using (var cachems = new UnsafeMemoryBuffer(pixels.Length * 22))
+                    using (var cachems = GetBuffer(pixels.Length * 22))
                     {
                         RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems);
                         var rendered = cachems.ToArraySegment();
@@ -129,7 +130,7 @@ namespace PixelFlut.Infrastructure
 
                 if (!offsetStatic)
                 {
-                    using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22 + offsetLen))
+                    using (var ms = GetBuffer(pixels.Length * 22 + offsetLen))
                     {
                         WriteOffset(offsetX, offsetY, ms);
                         ms.Write(cachedFrame, cachedFrame.Length);
@@ -143,7 +144,7 @@ namespace PixelFlut.Infrastructure
             }
             else
             {
-                using (var ms = new UnsafeMemoryBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0)))
+                using (var ms = GetBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0)))
                 {
                     if (offsetSupported)
                     {
@@ -217,6 +218,26 @@ namespace PixelFlut.Infrastructure
             }
         }
 
+        private ThreadLocal<UnsafeMemoryBuffer> _memoryBuffers = new ThreadLocal<UnsafeMemoryBuffer>();
+
+        private UnsafeMemoryBuffer GetBuffer(int length)
+        {
+            var buffer = _memoryBuffers.Value;
+            if (buffer == null)
+            {
+                buffer = new UnsafeMemoryBuffer(length);
+                _memoryBuffers.Value = buffer;
+            }
+            else if (buffer.BufferSize < length)
+            {
+                buffer.Dispose();
+                buffer = new UnsafeMemoryBuffer(length);
+                _memoryBuffers.Value = buffer;
+            }
+            buffer.Position = 0;
+            return buffer;
+        }
+
         private bool IsGreyScale(int argbColor, out byte grey)
         {
             var r = (byte)(argbColor >> 16 & 0xFF);
@@ -229,6 +250,11 @@ namespace PixelFlut.Infrastructure
 
         public void Dispose()
         {
+            foreach (var memoryBuffer in _memoryBuffers.Values)
+            {
+                memoryBuffer?.Dispose();
+            }
+
             foreach (var gcHandle in _gcHandles)
             {
                 gcHandle.Free();

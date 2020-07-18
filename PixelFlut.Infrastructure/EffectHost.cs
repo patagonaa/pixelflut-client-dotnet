@@ -72,7 +72,7 @@ namespace PixelFlut.Infrastructure
 
         private const int _numRenderDiagSamples = 100;
         private Queue<Tuple<DateTime, int>> _renderDiagSamples = new Queue<Tuple<DateTime, int>>();
-        private void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<ArraySegment<byte>> outputBytes)
+        private async void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<ArraySegment<byte>> outputBytes)
         {
             var tasksQueue = new Queue<Task<ArraySegment<byte>>>();
             foreach (var frame in inputFrames.GetConsumingEnumerable())
@@ -94,9 +94,7 @@ namespace PixelFlut.Infrastructure
 
                 if (tasksQueue.Count > 16)
                 {
-                    var task = tasksQueue.Dequeue();
-                    task.Wait();
-                    outputBytes.Add(task.Result);
+                    outputBytes.Add(await tasksQueue.Dequeue());
                 }
             }
             outputBytes.CompleteAdding();

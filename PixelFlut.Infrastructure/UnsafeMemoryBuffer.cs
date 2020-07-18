@@ -9,8 +9,9 @@ namespace PixelFlut.Infrastructure
         private readonly byte[] buffer;
         private readonly GCHandle pinnedArray;
         private readonly byte* bufferptr;
-        private int position;
-        private readonly int bufferSize;
+
+        public int BufferSize { get; }
+        public int Position { get; set; }
 
         public UnsafeMemoryBuffer(int bufferSize)
         {
@@ -18,7 +19,7 @@ namespace PixelFlut.Infrastructure
             this.pinnedArray = GCHandle.Alloc(this.buffer, GCHandleType.Pinned);
             this.bufferptr = (byte*)pinnedArray.AddrOfPinnedObject();
 
-            this.bufferSize = bufferSize;
+            this.BufferSize = bufferSize;
         }
 
         public void Write(byte[] source, int length)
@@ -31,9 +32,9 @@ namespace PixelFlut.Infrastructure
             var i = length;
             while (--i >= 0)
             {
-                bufferptr[i + position] = source[i];
+                bufferptr[i + Position] = source[i];
             }
-            position += length;
+            Position += length;
         }
 
         public void Write(byte* source, int length)
@@ -46,9 +47,9 @@ namespace PixelFlut.Infrastructure
             var i = length;
             while (--i >= 0)
             {
-                bufferptr[i + position] = source[i];
+                bufferptr[i + Position] = source[i];
             }
-            position += length;
+            Position += length;
         }
 
         public void WriteNullTerminated(byte* source)
@@ -57,10 +58,10 @@ namespace PixelFlut.Infrastructure
             byte chr = 0;
             while ((chr = source[i]) != 0)
             {
-                bufferptr[position + i++] = chr;
+                bufferptr[Position] = chr;
+                i++;
+                Position++;
             }
-
-            position += i;
         }
 
         public void WriteByte(byte b)
@@ -68,12 +69,12 @@ namespace PixelFlut.Infrastructure
 #if DEBUG
             Contract.Assert(position + 1 < bufferSize, $"Buffer too small! {position} {bufferSize}");
 #endif
-            bufferptr[position++] = b;
+            bufferptr[Position++] = b;
         }
 
         public ArraySegment<byte> ToArraySegment()
         {
-            return new ArraySegment<byte>(buffer, 0, position);
+            return new ArraySegment<byte>(buffer, 0, Position);
         }
 
         public void Dispose()
