@@ -10,8 +10,11 @@ namespace PixelFlut.Infrastructure
         private readonly GCHandle pinnedArray;
         private readonly byte* bufferptr;
 
-        public int BufferSize { get; }
-        public int Position { get; set; }
+        private readonly int bufferSize;
+        private int position;
+
+        public int BufferSize => bufferSize;
+        public int Position { get => position; set => position = value; }
 
         public UnsafeMemoryBuffer(int bufferSize)
         {
@@ -19,7 +22,7 @@ namespace PixelFlut.Infrastructure
             this.pinnedArray = GCHandle.Alloc(this.buffer, GCHandleType.Pinned);
             this.bufferptr = (byte*)pinnedArray.AddrOfPinnedObject();
 
-            this.BufferSize = bufferSize;
+            this.bufferSize = bufferSize;
         }
 
         public void Write(byte[] source, int length)
