@@ -107,6 +107,7 @@ namespace PixelFlut.Infrastructure
             bool greyscaleSupported = ((serverCapabilities & ServerCapabilities.GreyScale) != 0);
 
             const int offsetLen = 7 + 4 + 1 + 4 + 1;
+            const int pxLen = 22;
 
             var cachingPossible = cacheId != -1 && (offsetSupported || offsetStatic);
 
@@ -118,20 +119,24 @@ namespace PixelFlut.Infrastructure
                 {
 
                     Console.WriteLine($"Frame {cacheId} not rendered! rendering...");
-                    var cachems = GetBuffer(pixels.Length * 22);
-                    RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems);
-                    var rendered = cachems.ToArraySegment();
-                    byte[] renderedArray = rendered.ToArray();
-                    _cache[cacheId] = renderedArray;
-                    cachedFrame = renderedArray;
+                    using (var cachems = GetBuffer(pixels.Length * pxLen))
+                    {
+                        RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, cachems);
+                        var rendered = cachems.ToArraySegment();
+                        byte[] renderedArray = rendered.ToArray();
+                        _cache[cacheId] = renderedArray;
+                        cachedFrame = renderedArray;
+                    }
                 }
 
                 if (!offsetStatic)
                 {
-                    var ms = GetBuffer(pixels.Length * 22 + offsetLen);
-                    WriteOffset(offsetX, offsetY, ms);
-                    ms.Write(cachedFrame, cachedFrame.Length);
-                    return ms.ToArraySegment();
+                    using (var ms = GetBuffer(pixels.Length * pxLen + offsetLen))
+                    {
+                        WriteOffset(offsetX, offsetY, ms);
+                        ms.Write(cachedFrame, cachedFrame.Length);
+                        return ms.ToArraySegment();
+                    }
                 }
                 else
                 {
@@ -140,13 +145,15 @@ namespace PixelFlut.Infrastructure
             }
             else
             {
-                var ms = GetBuffer(pixels.Length * 22 + (offsetSupported ? offsetLen : 0));
-                if (offsetSupported)
+                using (var ms = GetBuffer(pixels.Length * pxLen + (offsetSupported ? offsetLen : 0)))
                 {
-                    WriteOffset(offsetX, offsetY, ms);
+                    if (offsetSupported)
+                    {
+                        WriteOffset(offsetX, offsetY, ms);
+                    }
+                    RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, ms);
+                    return ms.ToArraySegment();
                 }
-                RenderPixels(pixels, offsetX, offsetY, offsetSupported, greyscaleSupported, ms);
-                return ms.ToArraySegment();
             }
         }
 
@@ -212,24 +219,9 @@ namespace PixelFlut.Infrastructure
             }
         }
 
-        private ThreadLocal<UnsafeMemoryBuffer> _memoryBuffers = new ThreadLocal<UnsafeMemoryBuffer>();
-
         private UnsafeMemoryBuffer GetBuffer(int length)
         {
-            var buffer = _memoryBuffers.Value;
-            if (buffer == null)
-            {
-                buffer = new UnsafeMemoryBuffer(length);
-                _memoryBuffers.Value = buffer;
-            }
-            else if (buffer.BufferSize < length)
-            {
-                buffer.Dispose();
-                buffer = new UnsafeMemoryBuffer(length);
-                _memoryBuffers.Value = buffer;
-            }
-            buffer.Position = 0;
-            return buffer;
+            return new UnsafeMemoryBuffer(length);
         }
 
         private bool IsGreyScale(int argbColor, out byte grey)
@@ -244,11 +236,6 @@ namespace PixelFlut.Infrastructure
 
         public void Dispose()
         {
-            foreach (var memoryBuffer in _memoryBuffers.Values)
-            {
-                memoryBuffer?.Dispose();
-            }
-
             foreach (var gcHandle in _gcHandles)
             {
                 gcHandle.Free();
