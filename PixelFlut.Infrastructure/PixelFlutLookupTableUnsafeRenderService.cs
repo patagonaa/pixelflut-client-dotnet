@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
+using System.Drawing;
 
 namespace PixelFlut.Infrastructure
 {
@@ -224,7 +224,7 @@ namespace PixelFlut.Infrastructure
             return new UnsafeMemoryBuffer(length);
         }
 
-        private bool IsGreyScale(int argbColor, out byte grey)
+        private bool IsGreyScale(uint argbColor, out byte grey)
         {
             var r = (byte)(argbColor >> 16 & 0xFF);
             var g = (byte)(argbColor >> 8 & 0xFF);
@@ -240,6 +240,11 @@ namespace PixelFlut.Infrastructure
             {
                 gcHandle.Free();
             }
+        }
+
+        public void Init(Size canvasSize)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using PixelFlut.Infrastructure;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Runtime.CompilerServices;
 
 namespace PixelFlut.Demo.Filters
@@ -57,19 +56,19 @@ namespace PixelFlut.Demo.Filters
             if (c1 == c2)
                 return true;
 
-            var diff = (c1 & 0xFF) - (c2 & 0xFF);
+            var diff = (long)(c1 & 0xFF) - (c2 & 0xFF);
             if (diff > threshold || diff < -threshold)
                 return false;
             c1 >>= 8;
             c2 >>= 8;
 
-            diff = (c1 & 0xFF) - (c2 & 0xFF);
+            diff = (long)(c1 & 0xFF) - (c2 & 0xFF);
             if (diff > threshold || diff < -threshold)
                 return false;
             c1 >>= 8;
             c2 >>= 8;
 
-            diff = (c1 & 0xFF) - (c2 & 0xFF);
+            diff = (long)(c1 & 0xFF) - (c2 & 0xFF);
             if (diff > threshold || diff < -threshold)
                 return false;
 

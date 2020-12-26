@@ -57,11 +57,11 @@ namespace PixelFlut.Demo.Effects.Image
                     if (renderX < 0 || renderY < 0 || renderX >= canvasWidth || renderY >= canvasHeight)
                         continue;
 
-                    int r = bytes[pixelIndex + 2];
-                    int g = bytes[pixelIndex + 1];
-                    int b = bytes[pixelIndex];
+                    byte r = bytes[pixelIndex + 2];
+                    byte g = bytes[pixelIndex + 1];
+                    byte b = bytes[pixelIndex];
 
-                    var argb = 0xFF << 24 | r << 16 | g << 8 | b;
+                    uint argb = unchecked((uint)(0xFF << 24 | r << 16 | g << 8 | b));
                     toReturn[i].X = (x + offsetX);
                     toReturn[i].Y = (y + offsetY);
                     toReturn[i].Color = argb;
@@ -100,11 +100,11 @@ namespace PixelFlut.Demo.Effects.Image
                     if (renderX < 0 || renderY < 0 || renderX >= canvasWidth || renderY >= canvasHeight)
                         continue;
 
-                    int r = bytes[pixelIndex];
-                    int g = bytes[pixelIndex + 1];
-                    int b = bytes[pixelIndex + 2];
+                    var r = bytes[pixelIndex];
+                    var g = bytes[pixelIndex + 1];
+                    var b = bytes[pixelIndex + 2];
 
-                    var argb = a << 24 | r << 16 | g << 8 | b;
+                    uint argb = unchecked((uint)(a << 24 | r << 16 | g << 8 | b));
                     yield return new OutputPixel(x + offsetX, y + offsetY, argb);
                 }
             }

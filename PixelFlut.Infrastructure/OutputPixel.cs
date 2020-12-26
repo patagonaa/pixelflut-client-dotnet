@@ -4,7 +4,7 @@ namespace PixelFlut.Infrastructure
 {
     public struct OutputPixel
     {
-        public OutputPixel(int x, int y, int argb)
+        public OutputPixel(int x, int y, uint argb)
         {
             X = x;
             Y = y;
@@ -15,11 +15,11 @@ namespace PixelFlut.Infrastructure
         {
             X = point.X;
             Y = point.Y;
-            Color = color.ToArgb();
+            Color = unchecked((uint)color.ToArgb());
         }
 
         public int X;
         public int Y;
-        public int Color;
+        public uint Color;
     }
 }

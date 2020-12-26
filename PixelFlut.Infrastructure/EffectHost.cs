@@ -33,6 +33,8 @@ namespace PixelFlut.Infrastructure
 
         public void Start()
         {
+            this.renderService.Init(this.outputService.GetSize());
+
             var renderTask = _tfLongRunning.StartNew(() => { Render(this.renderService, this._effectRenderBuffer, this._renderOutputBuffer); });
             var outputTask = _tfLongRunning.StartNew(() => { Output(this.outputService, this._renderOutputBuffer); });
             var logTask = _tfLongRunning.StartNew(() => Log());
