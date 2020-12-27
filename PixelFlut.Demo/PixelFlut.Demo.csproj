@@ -11,15 +11,14 @@
     <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
-    <PackageReference Include="Accord.Video.FFMPEG.x64" Version="3.8.2-alpha" />
     <PackageReference Include="OpenCvSharp3-AnyCPU" Version="3.4.1.20180319" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../PixelFlut.Infrastructure/PixelFlut.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0002" />
-    <PackageReference Include="System.Drawing.Common" Version="4.5.0-preview1-26216-02" />
+    <PackageReference Include="FFMpegCore" Version="3.3.0" />
+    <PackageReference Include="System.Drawing.Common" Version="5.0.0" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Resources\cards\cards_01_clubs.bmp">

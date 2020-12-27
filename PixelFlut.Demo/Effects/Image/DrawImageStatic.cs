@@ -1,15 +1,13 @@
 using System;
 using System.Linq;
-using System.Collections.Generic;
 using System.Drawing;
-using SixLabors.ImageSharp;
 using PixelFlut.Infrastructure;
 
 namespace PixelFlut.Demo.Effects.Image
 {
     public class DrawImageStatic : DrawImageBase
     {
-        private readonly Tuple<Image<Rgba32>, byte[]> image;
+        private readonly Bitmap image;
         private readonly Point pos;
         private readonly Random random;
         private OutputPixel[] renderedImage;

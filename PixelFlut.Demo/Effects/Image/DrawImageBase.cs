@@ -1,8 +1,5 @@
 using System;
 using System.Drawing;
-using Rgba32Image = SixLabors.ImageSharp.Image<SixLabors.ImageSharp.Rgba32>;
-using ImageExtensions = SixLabors.ImageSharp.ImageExtensions;
-using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using PixelFlut.Infrastructure;
@@ -12,11 +9,9 @@ namespace PixelFlut.Demo.Effects.Image
     public abstract class DrawImageBase : EffectBase
     {
 
-        protected Tuple<Rgba32Image, byte[]> GetImageData(string filePath)
+        protected Bitmap GetImageData(string filePath)
         {
-            var image = SixLabors.ImageSharp.Image.Load(filePath);
-            var pixelData = ImageExtensions.SavePixelData(image);
-            return new Tuple<Rgba32Image, byte[]>(image, pixelData);
+            return new Bitmap(filePath);
         }
 
         protected OutputPixel[] DrawImage(Bitmap image, Point offset, bool mirror = false)
@@ -70,44 +65,6 @@ namespace PixelFlut.Demo.Effects.Image
             }
 
             return toReturn;
-        }
-
-        protected IEnumerable<OutputPixel> DrawImage(Tuple<Rgba32Image, byte[]> imageData, Point offset, bool mirror = false)
-        {
-            var offsetX = offset.X;
-            var offsetY = offset.Y;
-
-            var canvasSize = this.CanvasSize;
-            var image = imageData.Item1;
-            var bytes = imageData.Item2;
-
-            var width = image.Width;
-            var height = image.Height;
-
-            var canvasWidth = canvasSize.Width;
-            var canvasHeight = canvasSize.Height;
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int pixelIndex = ((mirror ? width - x - 1 : x) + (y * width)) * 4;
-                    int a = bytes[pixelIndex + 3];
-                    if (a == 0)
-                        continue;
-                    var renderX = x + offsetX;
-                    var renderY = y + offsetY;
-                    if (renderX < 0 || renderY < 0 || renderX >= canvasWidth || renderY >= canvasHeight)
-                        continue;
-
-                    var r = bytes[pixelIndex];
-                    var g = bytes[pixelIndex + 1];
-                    var b = bytes[pixelIndex + 2];
-
-                    uint argb = unchecked((uint)(a << 24 | r << 16 | g << 8 | b));
-                    yield return new OutputPixel(x + offsetX, y + offsetY, argb);
-                }
-            }
         }
     }
 }

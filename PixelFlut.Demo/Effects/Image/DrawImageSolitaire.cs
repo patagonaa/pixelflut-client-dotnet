@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Drawing;
-using SixLabors.ImageSharp;
 using PixelFlut.Infrastructure;
 using System.Drawing.Imaging;
 
@@ -42,7 +41,6 @@ namespace PixelFlut.Demo.Effects.Image
             this.r = new Random();
             states = new List<(double speedX, double speedY, double offsetX, double offsetY, int imgIdx)>();
             this.cardCount = cardCount;
-            //states.Add((5, 0, r.Next(250, 1000), 0));
         }
 
         public override void Init(Size canvasSize)
