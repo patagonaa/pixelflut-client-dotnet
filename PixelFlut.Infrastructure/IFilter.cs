@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Infrastructure
 {
     public interface IFilter : IDisposable
     {
-        OutputFrame ApplyFilter(OutputFrame frame);
+        Task<OutputFrame> ApplyFilter(OutputFrame frame);
     }
 }

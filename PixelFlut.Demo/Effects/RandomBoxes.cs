@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Demo.Effects
 {
@@ -16,7 +17,7 @@ namespace PixelFlut.Demo.Effects
             this.random = new Random();
         }
 
-        protected override OutputFrame TickInternal()
+        protected override Task<OutputFrame> TickInternal()
         {
             var maxOffsetX = CanvasSize.Width - boxSize.Width + 1;
             var maxOffsetY = CanvasSize.Height - boxSize.Height + 1;
@@ -40,7 +41,7 @@ namespace PixelFlut.Demo.Effects
                 }
             }
 
-            return new OutputFrame(offsetX, offsetY, toReturn);
+            return Task.FromResult(new OutputFrame(offsetX, offsetY, toReturn));
         }
     }
 }

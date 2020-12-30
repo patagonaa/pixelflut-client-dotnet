@@ -1,11 +1,12 @@
 using PixelFlut.Infrastructure;
 using System.Drawing;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Demo.Effects
 {
     public class Void : EffectBase
     {
-        protected override OutputFrame TickInternal()
+        protected override Task<OutputFrame> TickInternal()
         {
             var height = CanvasSize.Height;
             var width = CanvasSize.Width;
@@ -21,7 +22,7 @@ namespace PixelFlut.Demo.Effects
                 }
             }
 
-            return new OutputFrame(0, 0, toReturn, 0, true);
+            return Task.FromResult(new OutputFrame(0, 0, toReturn, 0, true));
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using PixelFlut.Infrastructure;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Demo.Filters
 {
@@ -10,11 +11,11 @@ namespace PixelFlut.Demo.Filters
         private OutputPixel[] lastFrame;
         private int frameCount;
 
-        public OutputFrame ApplyFilter(OutputFrame frame)
+        public Task<OutputFrame> ApplyFilter(OutputFrame frame)
         {
             var pixels = OptimizeBandwidth(frame.Pixels, ref this.lastFrame);
             this.frameCount++;
-            return new OutputFrame(frame.OffsetX, frame.OffsetY, pixels, frame.CacheId, frame.OffsetStatic);
+            return Task.FromResult(new OutputFrame(frame.OffsetX, frame.OffsetY, pixels, frame.CacheId, frame.OffsetStatic));
         }
 
         private OutputPixel[] OptimizeBandwidth(OutputPixel[] outputPixels, ref OutputPixel[] lastFrame)

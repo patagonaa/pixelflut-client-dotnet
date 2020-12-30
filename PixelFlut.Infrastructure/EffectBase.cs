@@ -9,20 +9,21 @@ namespace PixelFlut.Infrastructure
 {
     public abstract class EffectBase : IEffect
     {
-        public virtual void Init(Size canvasSize)
+        public virtual Task Init(Size canvasSize)
         {
             CanvasSize = canvasSize;
             this.initialized = true;
+            return Task.CompletedTask;
         }
 
-        public OutputFrame GetPixels()
+        public async Task<OutputFrame> GetPixels()
         {
             if (!this.initialized)
                 throw new InvalidOperationException("not initialized!");
-            return TickInternal();
+            return await TickInternal();
         }
 
-        protected abstract OutputFrame TickInternal();
+        protected abstract Task<OutputFrame> TickInternal();
 
         public virtual void Dispose()
         {

@@ -244,7 +244,6 @@ namespace PixelFlut.Infrastructure
 
         public void Init(Size canvasSize)
         {
-            throw new NotImplementedException();
         }
     }
 }

@@ -21,8 +21,8 @@ namespace PixelFlut.Infrastructure
         private List<Task> _tasks = new List<Task>();
         private TaskFactory _tfLongRunning = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.None);
         private TaskFactory _tfShort = new TaskFactory(TaskCreationOptions.PreferFairness, TaskContinuationOptions.None);
-        private BlockingCollection<OutputFrame> _effectRenderBuffer = new BlockingCollection<OutputFrame>(FilterRenderBufferLength);
-        private BlockingCollection<ArraySegment<byte>> _renderOutputBuffer = new BlockingCollection<ArraySegment<byte>>(RenderOutputBufferLength);
+        private AsyncBoundedQueue<OutputFrame> _effectRenderBuffer = new AsyncBoundedQueue<OutputFrame>(FilterRenderBufferLength);
+        private AsyncBoundedQueue<ArraySegment<byte>> _renderOutputBuffer = new AsyncBoundedQueue<ArraySegment<byte>>(RenderOutputBufferLength);
 
         public EffectHost(IRenderService renderService, IOutputService outputService)
         {
@@ -47,37 +47,39 @@ namespace PixelFlut.Infrastructure
             await Task.WhenAll(_tasks);
         }
 
-        private void Effect(IEffect effect, BlockingCollection<OutputFrame> outputFrames)
+        private async void Effect(IEffect effect, AsyncBoundedQueue<OutputFrame> outputFrames)
         {
+            await effect.Init(this.outputService.GetSize());
+
             while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
-                OutputFrame frame = effect.GetPixels();
+                OutputFrame frame = await effect.GetPixels();
                 if (frame.Pixels == null)
                 {
                     outputFrames.CompleteAdding();
                     break;
                 }
-                outputFrames.Add(frame);
+                await outputFrames.Enqueue(frame);
             }
         }
 
-        private void Filter(IFilter filter, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<OutputFrame> outputFrames)
+        private async void Filter(IFilter filter, AsyncBoundedQueue<OutputFrame> inputFrames, AsyncBoundedQueue<OutputFrame> outputFrames)
         {
-            foreach (var inputFrame in inputFrames.GetConsumingEnumerable())
+            await foreach (var inputFrame in inputFrames.GetConsumingEnumerable())
             {
                 var frame = inputFrame;
-                frame = filter.ApplyFilter(frame);
-                outputFrames.Add(frame);
+                frame = await filter.ApplyFilter(frame);
+                await outputFrames.Enqueue(frame);
             }
             outputFrames.CompleteAdding();
         }
 
         private const int _numRenderDiagSamples = 100;
         private Queue<Tuple<DateTime, int>> _renderDiagSamples = new Queue<Tuple<DateTime, int>>();
-        private async void Render(IRenderService renderService, BlockingCollection<OutputFrame> inputFrames, BlockingCollection<ArraySegment<byte>> outputBytes)
+        private async void Render(IRenderService renderService, AsyncBoundedQueue<OutputFrame> inputFrames, AsyncBoundedQueue<ArraySegment<byte>> outputBytes)
         {
             var tasksQueue = new Queue<Task<ArraySegment<byte>>>();
-            foreach (var frame in inputFrames.GetConsumingEnumerable())
+            await foreach (var frame in inputFrames.GetConsumingEnumerable())
             {
                 tasksQueue.Enqueue(_tfShort.StartNew(() =>
                 {
@@ -96,15 +98,15 @@ namespace PixelFlut.Infrastructure
 
                 if (tasksQueue.Count > 16)
                 {
-                    outputBytes.Add(await tasksQueue.Dequeue());
+                    await outputBytes.Enqueue(await tasksQueue.Dequeue());
                 }
             }
             outputBytes.CompleteAdding();
         }
 
-        private void Output(IOutputService outputService, BlockingCollection<ArraySegment<byte>> inputBytes)
+        private async void Output(IOutputService outputService, AsyncBoundedQueue<ArraySegment<byte>> inputBytes)
         {
-            foreach (var bytes in inputBytes.GetConsumingEnumerable())
+            await foreach (var bytes in inputBytes.GetConsumingEnumerable())
             {
                 var sentBytes = outputService.Output(bytes);
                 lock (_outputDiagSamples)
@@ -185,17 +187,15 @@ namespace PixelFlut.Infrastructure
 
         public void AddEffect(IEffect effect, params IFilter[] filters)
         {
-            var effectBuffer = filters.Length == 0 ? this._effectRenderBuffer : new BlockingCollection<OutputFrame>(EffectFilterBufferLength);
-
-            effect.Init(this.outputService.GetSize());
+            var effectBuffer = filters.Length == 0 ? this._effectRenderBuffer : new AsyncBoundedQueue<OutputFrame>(EffectFilterBufferLength);
             var effectTask = _tfLongRunning.StartNew(() => { Effect(effect, effectBuffer); });
             this._tasks.Add(effectTask);
 
-            BlockingCollection<OutputFrame> filterInBuffer = effectBuffer;
+            AsyncBoundedQueue<OutputFrame> filterInBuffer = effectBuffer;
             for (int i = 0; i < filters.Length; i++)
             {
                 var filter = filters[i];
-                var filterOutBuffer = i == filters.Length - 1 ? this._effectRenderBuffer : new BlockingCollection<OutputFrame>(EffectFilterBufferLength);
+                var filterOutBuffer = i == filters.Length - 1 ? this._effectRenderBuffer : new AsyncBoundedQueue<OutputFrame>(EffectFilterBufferLength);
                 var thisFilterInBuffer = filterInBuffer;
                 var filterTask = _tfLongRunning.StartNew(() => { Filter(filter, thisFilterInBuffer, filterOutBuffer); });
                 this._tasks.Add(filterTask);

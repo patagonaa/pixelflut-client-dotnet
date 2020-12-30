@@ -13,30 +13,26 @@ namespace PixelFlut.Demo.Effects
     class VideoPlayback : EffectBase
     {
         private readonly string _filePath;
+        private readonly Size? _overrideSize;
         private readonly CancellationTokenSource _cts;
         private Size _videoSize;
         private byte[] _frame;
         private OutputPixel[] _pixels;
 
-        public VideoPlayback(string filePath)
+        public VideoPlayback(string filePath, Size? overrideSize = null)
         {
             _filePath = filePath;
+            _overrideSize = overrideSize;
             _cts = new CancellationTokenSource();
         }
 
-        public override void Init(Size canvasSize)
+        public override async Task Init(Size canvasSize)
         {
-            base.Init(canvasSize);
-            InitAsync().Wait();
-        }
+            await base.Init(canvasSize);
 
-        private async Task InitAsync()
-        {
             var result = await FFProbe.AnalyseAsync(_filePath);
 
-            var width = result.PrimaryVideoStream.Width;
-            var height = result.PrimaryVideoStream.Height;
-            _videoSize = new Size(width, height);
+            _videoSize = _overrideSize ?? new Size(result.PrimaryVideoStream.Width, result.PrimaryVideoStream.Height);
 
             _ = Task.Factory.StartNew(() => GenerateFrames(result), TaskCreationOptions.LongRunning);
         }
@@ -45,13 +41,19 @@ namespace PixelFlut.Demo.Effects
         {
             while (!_cts.IsCancellationRequested)
             {
-                var sink = new RawImagePipeSink(result.PrimaryVideoStream, 3, OnFrame, true);
+                var sink = new RawImagePipeSink(_videoSize, 3, OnFrame);
                 var args = FFMpegArguments
                     .FromFileInput(_filePath).OutputToPipe(sink, options =>
-                     options.DisableChannel(Channel.Audio)
-                     .UsingMultithreading(true)
-                     .ForceFormat("rawvideo")
-                     .ForcePixelFormat("bgr24"))
+                     {
+                         options.DisableChannel(Channel.Audio)
+                            .UsingMultithreading(true)
+                            .ForceFormat("rawvideo")
+                            .ForcePixelFormat("bgr24");
+                         if (_overrideSize.HasValue)
+                         {
+                             options.Resize(_videoSize);
+                         }
+                     })
                     .CancellableThrough(out var cancelCallback);
                 _cts.Token.Register(cancelCallback);
 
@@ -62,19 +64,25 @@ namespace PixelFlut.Demo.Effects
 
         private async Task OnFrame(byte[] frame)
         {
+            while (_frame != null)
+            {
+                await Task.Yield();
+            }
+
             _frame = frame;
         }
 
-        protected override OutputFrame TickInternal()
+        protected override async Task<OutputFrame> TickInternal()
         {
             while (_frame == null)
             {
-                Thread.Sleep(10);
+                await Task.Yield();
             }
 
             if (_frame != null)
             {
                 var frame = _frame;
+                _frame = null;
                 _pixels = new OutputPixel[_videoSize.Width * _videoSize.Height];
                 int i = 0;
                 for (int y = 0; y < _videoSize.Height; y++)
@@ -88,7 +96,6 @@ namespace PixelFlut.Demo.Effects
                         i++;
                     }
                 }
-                _frame = null;
             }
 
             var outputPixels = _pixels;
@@ -104,16 +111,12 @@ namespace PixelFlut.Demo.Effects
         class RawImagePipeSink : IPipeSink
         {
             private readonly int _frameSize;
-            private readonly double _frameRate;
             private readonly Func<byte[], Task> _onFrame;
-            private readonly bool _limitFrameRate;
 
-            public RawImagePipeSink(VideoStream primaryVideoStream, int bytesPerPixel, Func<byte[], Task> onFrame, bool limitFrameRate = false)
+            public RawImagePipeSink(Size size, int bytesPerPixel, Func<byte[], Task> onFrame)
             {
-                _frameSize = primaryVideoStream.Width * primaryVideoStream.Height * bytesPerPixel;
-                _frameRate = primaryVideoStream.FrameRate;
+                _frameSize = size.Width * size.Height * bytesPerPixel;
                 _onFrame = onFrame;
-                _limitFrameRate = limitFrameRate;
             }
 
             public string GetFormat()
@@ -124,32 +127,36 @@ namespace PixelFlut.Demo.Effects
             public async Task ReadAsync(Stream inputStream, CancellationToken cancellationToken)
             {
                 var buffer = new byte[_frameSize];
-                int bufferPos = 0;
-                var lastFrameTime = DateTime.MinValue;
-                var frameDuration = TimeSpan.FromSeconds(1 / _frameRate);
+                var buffer2 = new byte[_frameSize];
 
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    while (bufferPos < _frameSize)
-                    {
-                        var readBytes = await inputStream.ReadAsync(buffer, bufferPos, _frameSize - bufferPos);
-                        if (readBytes == 0) // stream end
-                            return;
-                        bufferPos += readBytes;
-                    }
-                    if (bufferPos != _frameSize)
-                        throw new InvalidOperationException("invalid BufferPos");
-                    await _onFrame(buffer);
-                    if (_limitFrameRate)
-                    {
-                        var waitTime = frameDuration - (DateTime.UtcNow - lastFrameTime);
-                        if (waitTime > TimeSpan.Zero)
-                            await Task.Delay(waitTime);
+                    await ReadFrame(inputStream, buffer);
 
-                        lastFrameTime = DateTime.UtcNow;
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        await Task.WhenAll(_onFrame(buffer), ReadFrame(inputStream, buffer2));
+                        await Task.WhenAll(_onFrame(buffer2), ReadFrame(inputStream, buffer));
                     }
-                    bufferPos = 0;
                 }
+                catch (TaskCanceledException)
+                {
+                }
+            }
+
+            private async Task ReadFrame(Stream stream, byte[] buffer)
+            {
+                var bufferPos = 0;
+
+                while (bufferPos < _frameSize)
+                {
+                    var readBytes = await stream.ReadAsync(buffer, bufferPos, _frameSize - bufferPos);
+                    if (readBytes == 0) // stream end
+                        throw new TaskCanceledException();
+                    bufferPos += readBytes;
+                }
+                if (bufferPos != _frameSize)
+                    throw new InvalidOperationException("invalid BufferPos");
             }
         }
     }

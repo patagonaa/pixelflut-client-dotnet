@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Demo.Filters
 {
@@ -17,7 +17,7 @@ namespace PixelFlut.Demo.Filters
             this.targetFps = targetFps;
         }
 
-        public OutputFrame ApplyFilter(OutputFrame frame)
+        public async Task<OutputFrame> ApplyFilter(OutputFrame frame)
         {
             lock (_samples)
             {
@@ -29,7 +29,7 @@ namespace PixelFlut.Demo.Filters
                 }
             }
             if (GetFps() > this.targetFps)
-                Thread.Sleep(1000 / targetFps);
+                await Task.Delay(1000 / targetFps);
 
             return frame;
         }

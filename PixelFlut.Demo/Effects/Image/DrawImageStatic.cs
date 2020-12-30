@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Drawing;
 using PixelFlut.Infrastructure;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Demo.Effects.Image
 {
@@ -19,10 +20,10 @@ namespace PixelFlut.Demo.Effects.Image
             this.random = new Random();
         }
 
-        protected override OutputFrame TickInternal()
+        protected override Task<OutputFrame> TickInternal()
         {
             OutputPixel[] pixels = renderedImage ?? (renderedImage = DrawImage(this.image, Point.Empty).ToArray());
-            return new OutputFrame(pos.X, pos.Y, pixels, 0, true);
+            return Task.FromResult(new OutputFrame(pos.X, pos.Y, pixels, 0, true));
         }
     }
 }

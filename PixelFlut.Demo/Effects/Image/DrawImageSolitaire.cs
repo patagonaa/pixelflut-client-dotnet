@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using PixelFlut.Infrastructure;
 using System.Drawing.Imaging;
+using System.Threading.Tasks;
 
 namespace PixelFlut.Demo.Effects.Image
 {
@@ -43,7 +44,7 @@ namespace PixelFlut.Demo.Effects.Image
             this.cardCount = cardCount;
         }
 
-        public override void Init(Size canvasSize)
+        public override Task Init(Size canvasSize)
         {
             base.Init(canvasSize);
             states.Clear();
@@ -57,9 +58,11 @@ namespace PixelFlut.Demo.Effects.Image
             {
                 imagesCache.Add(DrawImage(image, Point.Empty).ToArray());
             }
+
+            return Task.CompletedTask;
         }
 
-        protected override OutputFrame TickInternal()
+        protected override Task<OutputFrame> TickInternal()
         {
             int i;
             unchecked
@@ -134,7 +137,7 @@ namespace PixelFlut.Demo.Effects.Image
 
             var cachedImage = imagesCache[imageIdx];
 
-            return new OutputFrame(offsetX, offsetY, cachedImage, imageIdx, false);
+            return Task.FromResult(new OutputFrame(offsetX, offsetY, cachedImage, imageIdx, false));
         }
     }
 }

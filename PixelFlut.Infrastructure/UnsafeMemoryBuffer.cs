@@ -46,7 +46,7 @@ namespace PixelFlut.Infrastructure
             Contract.Assert(length > 0);
             Contract.Assert(position + length < bufferSize, "Buffer too small!");
 #endif
-            Buffer.MemoryCopy(source, bufferptr, long.MaxValue, length);
+            Buffer.MemoryCopy(source, bufferptr + position, long.MaxValue, length);
             position += length;
         }
 
