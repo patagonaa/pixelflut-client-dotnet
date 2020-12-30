@@ -131,27 +131,31 @@ namespace PixelFlut.Demo.Effects
 
                 try
                 {
-                    await ReadFrame(inputStream, buffer);
+                    await ReadFrame(inputStream, buffer, cancellationToken);
 
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        await Task.WhenAll(_onFrame(buffer), ReadFrame(inputStream, buffer2));
-                        await Task.WhenAll(_onFrame(buffer2), ReadFrame(inputStream, buffer));
+                        await Task.WhenAll(_onFrame(buffer), ReadFrame(inputStream, buffer2, cancellationToken));
+                        await Task.WhenAll(_onFrame(buffer2), ReadFrame(inputStream, buffer, cancellationToken));
                     }
                 }
                 catch (TaskCanceledException)
                 {
                 }
+                catch(Exception ex)
+                {
+                    Console.WriteLine("Error in Video Playback: " + ex);
+                }
             }
 
-            private async Task ReadFrame(Stream stream, byte[] buffer)
+            private async Task ReadFrame(Stream stream, byte[] buffer, CancellationToken token)
             {
                 var bufferPos = 0;
 
                 while (bufferPos < _frameSize)
                 {
-                    var readBytes = await stream.ReadAsync(buffer, bufferPos, _frameSize - bufferPos);
-                    if (readBytes == 0) // stream end
+                    var readBytes = await stream.ReadAsync(buffer, bufferPos, _frameSize - bufferPos, token);
+                    if (readBytes == 0 || token.IsCancellationRequested) // stream end
                         throw new TaskCanceledException();
                     bufferPos += readBytes;
                 }
