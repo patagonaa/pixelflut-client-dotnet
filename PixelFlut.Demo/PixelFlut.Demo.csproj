@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <LangVersion>7.1</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <Configurations>Debug;Release;Release_Net461;Debug_Net461</Configurations>
   </PropertyGroup>
   <PropertyGroup Condition="('$(Configuration)' == 'Release_Net461') OR ('$(Configuration)' == 'Debug_Net461')">
     <TargetFramework>net461</TargetFramework>
   </PropertyGroup>
   <PropertyGroup Condition="('$(Configuration)' != 'Release_Net461') AND ('$(Configuration)' != 'Debug_Net461')">
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
     <PackageReference Include="OpenCvSharp3-AnyCPU" Version="3.4.1.20180319" />
