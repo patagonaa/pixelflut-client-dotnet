@@ -11,7 +11,21 @@ namespace PixelFlut.Demo.Effects.Image
 
         protected Bitmap GetImageData(string filePath)
         {
-            return new Bitmap(filePath);
+            Bitmap bitmap = new Bitmap(filePath);
+            if(bitmap.PixelFormat != PixelFormat.Format24bppRgb)
+            {
+                Bitmap newBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format24bppRgb);
+
+                using (Graphics gr = Graphics.FromImage(newBitmap))
+                {
+                    gr.DrawImage(bitmap, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+                }
+
+                bitmap.Dispose();
+                bitmap = newBitmap;
+            }
+
+            return bitmap;
         }
 
         protected OutputPixel[] DrawImage(Bitmap image, Point offset, bool mirror = false)

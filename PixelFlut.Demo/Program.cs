@@ -24,21 +24,24 @@ namespace PixelFlut.Demo
             var outputService = new PixelFlutNullOutputService(new Size(1920, 1080));
             //var outputService = new PixelFlutTcpOutputService(ep);
 
-            var eh = new EffectHost(renderService, outputService);
+            var eh = new EffectHost(outputService.GetSize(), renderService);
             //eh.AddEffect(new RandomBoxes(new Size(50, 50)));
             //eh.AddEffect(new RandomBoxes(new Size(500, 500)));
             //eh.SetEffect(new DrawImageStatic("/home/patagona/Stuff/cyber.jpg", Point.Empty));
-            eh.AddEffect(new DrawImageSolitaire(Directory.GetFiles("Resources/cards"), 32));
+            await eh.AddEffect(new DrawImageSolitaire(Directory.GetFiles("Resources/cards"), 32));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/solitaire.png"}, 50));
             //eh.SetEffect(new DrawImageSolitaire(new List<string>{"/home/patagona/Stuff/white.png", "/home/patagona/Stuff/black.png"}, 2));
             //eh.SetEffect(new Infrastructure.Effects.Void());
+
+            await eh.AddOutput(outputService);
+
             eh.Start();
 
             var cts = new CancellationTokenSource();
-            System.AppDomain.CurrentDomain.ProcessExit += (e, evArgs) => cts.Cancel();
+            AppDomain.CurrentDomain.ProcessExit += (e, evArgs) => cts.Cancel();
             cts.Token.WaitHandle.WaitOne();
 
-            await eh.Stop();
+            eh.Stop();
             renderService.Dispose();
         }
     }

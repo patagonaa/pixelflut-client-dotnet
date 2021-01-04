@@ -7,14 +7,19 @@ namespace PixelFlut.Demo.Filters
 {
     class PixelDiffFilter : IFilter
     {
-        private const int KeyFrameAfterFrames = 20;
-        private OutputPixel[] lastFrame;
-        private int frameCount;
+        private OutputPixel[] _lastFrame;
+        private int _frameCount;
+        private readonly int _keyFrameAfterFrames;
+
+        public PixelDiffFilter(int keyFrameAfterFrames = 20)
+        {
+            _keyFrameAfterFrames = keyFrameAfterFrames;
+        }
 
         public Task<OutputFrame> ApplyFilter(OutputFrame frame)
         {
-            var pixels = OptimizeBandwidth(frame.Pixels, ref this.lastFrame);
-            this.frameCount++;
+            var pixels = OptimizeBandwidth(frame.Pixels, ref _lastFrame);
+            _frameCount++;
             return Task.FromResult(new OutputFrame(frame.OffsetX, frame.OffsetY, pixels, frame.CacheId, frame.OffsetStatic));
         }
 
@@ -34,7 +39,7 @@ namespace PixelFlut.Demo.Filters
                 var oldPixel = lastFrame[i];
                 var newPixel = outputPixels[i];
 
-                if (!(this.frameCount % KeyFrameAfterFrames == 0) && ColorsEqual(oldPixel, newPixel))
+                if (!(_frameCount % _keyFrameAfterFrames == 0) && ColorsEqual(oldPixel, newPixel))
                 {
                     //newPixel = new OutputPixel(newPixel.X, newPixel.Y, Color.Magenta.ToArgb());
                     continue;
@@ -78,7 +83,7 @@ namespace PixelFlut.Demo.Filters
 
         public void Dispose()
         {
-            this.lastFrame = null;
+            _lastFrame = null;
         }
     }
 }

@@ -24,7 +24,7 @@ namespace PixelFlut.Demo.Filters
             {
                 var newPixel = outputPixels[i];
 
-                if ((this.frameCount + i) % 2 == 0)
+                if ((this.frameCount + i + (newPixel.Y % 2)) % 2 == 0)
                     continue;
                 toReturn.Add(newPixel);
             }
