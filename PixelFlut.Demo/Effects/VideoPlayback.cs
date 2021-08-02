@@ -89,7 +89,7 @@ namespace PixelFlut.Demo.Effects
                 {
                     for (int x = 0; x < _videoSize.Width; x++)
                     {
-                        var argb = unchecked((uint)(frame[i * 3] | frame[i * 3 + 1] << 8 | frame[i * 3 + 2] << 16));
+                        var argb = unchecked((uint)(frame[i * 3] | frame[i * 3 + 1] << 8 | frame[i * 3 + 2] << 16 | 0xFF << 24));
 
                         _pixels[i] = new OutputPixel(x, y, argb);
 

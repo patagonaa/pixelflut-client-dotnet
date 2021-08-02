@@ -49,7 +49,7 @@ namespace PixelFlut.Demo
                 var bps = (bytes - lastBytes) / timeSpan.TotalSeconds;
 
                 Console.WriteLine($"Render in: {_renderTransformBlock.InputCount}, Render out: {_renderTransformBlock.OutputCount}, Mpx/s: {pps / 1000 / 1000:F2}, Mb/s: {bps / 1000 / 1000 * 8:F2}");
-                await Task.Delay(1000);
+                await Task.Delay(10000);
                 lastTime = time;
                 lastPixels = pixels;
                 lastBytes = bytes;
@@ -75,7 +75,7 @@ namespace PixelFlut.Demo
                 for (int i = 0; i < filterBlocks.Count; i++)
                 {
                     var thisBlock = (ISourceBlock<OutputFrame>)filterBlocks[i];
-                    var nextBlock = (i + 1) < filterBlocks.Count ? (ITargetBlock<OutputFrame>)_renderTransformBlock : filterBlocks[i + 1];
+                    var nextBlock = (i + 1) <= filterBlocks.Count ? (ITargetBlock<OutputFrame>)_renderTransformBlock : filterBlocks[i + 1];
                     thisBlock.LinkTo(nextBlock, linkOptions);
                 }
                 firstBlock = filterBlocks[0];
