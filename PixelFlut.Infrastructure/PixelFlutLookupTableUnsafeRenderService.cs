@@ -175,6 +175,15 @@ namespace PixelFlut.Infrastructure
             {
                 var pixel = pixels[i];
 
+                var argbColor = pixel.Color;
+
+                var a = (byte)(argbColor >> 24 & 0xFF);
+
+                if (a == 0)
+                {
+                    continue;
+                }
+
                 int pixelX;
                 int pixelY;
 
@@ -197,10 +206,6 @@ namespace PixelFlut.Infrastructure
                 var yNum = numbers[pixelY];
                 ms.WriteNullTerminated(yNum);
                 ms.WriteByte(space);
-
-                var argbColor = pixel.Color;
-
-                var a = (byte)(argbColor >> 24 & 0xFF);
 
                 if (greyscaleSupported && IsGreyScale(argbColor, out var grey) && a == 0xFF)
                 {
