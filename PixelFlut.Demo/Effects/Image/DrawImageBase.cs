@@ -14,7 +14,7 @@ namespace PixelFlut.Demo.Effects.Image
             Bitmap bitmap = new Bitmap(filePath);
             if(bitmap.PixelFormat != PixelFormat.Format24bppRgb)
             {
-                Bitmap newBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format24bppRgb);
+                Bitmap newBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
 
                 using (Graphics gr = Graphics.FromImage(newBitmap))
                 {
@@ -35,12 +35,12 @@ namespace PixelFlut.Demo.Effects.Image
 
             var canvasSize = this.CanvasSize;
 
-            if (image.PixelFormat != PixelFormat.Format24bppRgb)
+            if (image.PixelFormat != PixelFormat.Format32bppArgb)
             {
-                throw new ArgumentException("image must be 24 bpp RGB");
+                throw new ArgumentException("image must be 32 bpp ARGB");
             }
 
-            var bitmapData = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var bitmapData = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
             var stride = bitmapData.Stride;
             var dataLength = stride * bitmapData.Height;
             var bytes = new byte[dataLength];
@@ -60,17 +60,18 @@ namespace PixelFlut.Demo.Effects.Image
             {
                 for (int x = 0; x < width; x++)
                 {
-                    int pixelIndex = ((mirror ? width - x - 1 : x) * 3 + (y * stride));
+                    int pixelIndex = ((mirror ? width - x - 1 : x) * 4 + (y * stride));
                     var renderX = x + offsetX;
                     var renderY = y + offsetY;
                     if (renderX < 0 || renderY < 0 || renderX >= canvasWidth || renderY >= canvasHeight)
                         continue;
 
+                    byte a = bytes[pixelIndex + 3];
                     byte r = bytes[pixelIndex + 2];
                     byte g = bytes[pixelIndex + 1];
                     byte b = bytes[pixelIndex];
 
-                    uint argb = unchecked((uint)(0xFF << 24 | r << 16 | g << 8 | b));
+                    uint argb = unchecked((uint)(a << 24 | r << 16 | g << 8 | b));
                     toReturn[i].X = (x + offsetX);
                     toReturn[i].Y = (y + offsetY);
                     toReturn[i].Color = argb;
