@@ -27,7 +27,7 @@ namespace PixelFlut.Demo.Effects.Image
                 // copy image to fix pixel format
                 using (var bitmapSrc = new Bitmap(path))
                 {
-                    var bitmapDest = new Bitmap(bitmapSrc.Width, bitmapSrc.Height, PixelFormat.Format24bppRgb);
+                    var bitmapDest = new Bitmap(bitmapSrc.Width, bitmapSrc.Height, PixelFormatToUse);
 
                     for (int y = 0; y < bitmapSrc.Height; y++)
                     {

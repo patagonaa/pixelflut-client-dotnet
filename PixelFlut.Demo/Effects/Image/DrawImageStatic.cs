@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Drawing;
 using PixelFlut.Infrastructure;
@@ -8,22 +7,20 @@ namespace PixelFlut.Demo.Effects.Image
 {
     public class DrawImageStatic : DrawImageBase
     {
-        private readonly Bitmap image;
-        private readonly Point pos;
-        private readonly Random random;
-        private OutputPixel[] renderedImage;
+        private readonly Bitmap _image;
+        private readonly Point _pos;
+        private OutputPixel[] _renderedImage;
 
         public DrawImageStatic(string filePath, Point p)
         {
-            this.image = GetImageData(filePath);
-            this.pos = p;
-            this.random = new Random();
+            _image = GetImageData(filePath);
+            _pos = p;
         }
 
         protected override Task<OutputFrame> TickInternal()
         {
-            OutputPixel[] pixels = renderedImage ?? (renderedImage = DrawImage(this.image, Point.Empty).ToArray());
-            return Task.FromResult(new OutputFrame(pos.X, pos.Y, pixels, 0, true));
+            OutputPixel[] pixels = _renderedImage ?? (_renderedImage = DrawImage(_image, Point.Empty).ToArray());
+            return Task.FromResult(new OutputFrame(_pos.X, _pos.Y, pixels, 0, true));
         }
     }
 }

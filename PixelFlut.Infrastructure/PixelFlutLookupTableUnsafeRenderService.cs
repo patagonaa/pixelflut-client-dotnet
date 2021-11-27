@@ -24,6 +24,7 @@ namespace PixelFlut.Infrastructure
         private readonly List<GCHandle> _gcHandles = new List<GCHandle>();
 
         private readonly IDictionary<int, byte[]> _cache = new ConcurrentDictionary<int, byte[]>();
+        private Size _canvasSize;
 
         public PixelFlutLookupTableUnsafeRenderService(ServerCapabilities serverCapabilities)
         {
@@ -170,6 +171,9 @@ namespace PixelFlut.Infrastructure
 
         private void RenderPixels(OutputPixel[] pixels, int offsetX, int offsetY, bool omitOffset, bool greyscaleSupported, UnsafeMemoryBuffer ms)
         {
+            var canvasWidth = _canvasSize.Width;
+            var canvasHeight = _canvasSize.Height;
+
             var len = pixels.Length;
             for (int i = 0; i < len; i++)
             {
@@ -196,6 +200,11 @@ namespace PixelFlut.Infrastructure
                 {
                     pixelX = pixel.X + offsetX;
                     pixelY = pixel.Y + offsetY;
+                }
+
+                if(pixelX >= canvasWidth || pixelY >= canvasHeight)
+                {
+                    continue;
                 }
 
                 ms.Write(px, 3);
@@ -249,6 +258,7 @@ namespace PixelFlut.Infrastructure
 
         public void Init(Size canvasSize)
         {
+            _canvasSize = canvasSize;
         }
     }
 }

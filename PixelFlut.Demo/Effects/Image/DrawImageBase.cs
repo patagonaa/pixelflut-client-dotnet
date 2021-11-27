@@ -8,13 +8,15 @@ namespace PixelFlut.Demo.Effects.Image
 {
     public abstract class DrawImageBase : EffectBase
     {
+        protected const int BytesPerPixel = 4;
+        protected const PixelFormat PixelFormatToUse = PixelFormat.Format32bppArgb;
 
         protected Bitmap GetImageData(string filePath)
         {
             Bitmap bitmap = new Bitmap(filePath);
-            if(bitmap.PixelFormat != PixelFormat.Format24bppRgb)
+            if(bitmap.PixelFormat != PixelFormatToUse)
             {
-                Bitmap newBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
+                Bitmap newBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormatToUse);
 
                 using (Graphics gr = Graphics.FromImage(newBitmap))
                 {
@@ -35,12 +37,12 @@ namespace PixelFlut.Demo.Effects.Image
 
             var canvasSize = this.CanvasSize;
 
-            if (image.PixelFormat != PixelFormat.Format32bppArgb)
+            if (image.PixelFormat != PixelFormatToUse)
             {
-                throw new ArgumentException("image must be 32 bpp ARGB");
+                throw new ArgumentException($"image must be {PixelFormatToUse}");
             }
 
-            var bitmapData = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            var bitmapData = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, PixelFormatToUse);
             var stride = bitmapData.Stride;
             var dataLength = stride * bitmapData.Height;
             var bytes = new byte[dataLength];
@@ -60,7 +62,7 @@ namespace PixelFlut.Demo.Effects.Image
             {
                 for (int x = 0; x < width; x++)
                 {
-                    int pixelIndex = ((mirror ? width - x - 1 : x) * 4 + (y * stride));
+                    int pixelIndex = ((mirror ? width - x - 1 : x) * BytesPerPixel + (y * stride));
                     var renderX = x + offsetX;
                     var renderY = y + offsetY;
                     if (renderX < 0 || renderY < 0 || renderX >= canvasWidth || renderY >= canvasHeight)
