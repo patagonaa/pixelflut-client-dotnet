@@ -75,7 +75,7 @@ namespace PixelFlut.Demo
                 for (int i = 0; i < filterBlocks.Count; i++)
                 {
                     var thisBlock = (ISourceBlock<OutputFrame>)filterBlocks[i];
-                    var nextBlock = (i + 1) <= filterBlocks.Count ? (ITargetBlock<OutputFrame>)_renderTransformBlock : filterBlocks[i + 1];
+                    var nextBlock = (i+1) >= filterBlocks.Count ? (ITargetBlock<OutputFrame>)_renderTransformBlock : filterBlocks[i + 1];
                     thisBlock.LinkTo(nextBlock, linkOptions);
                 }
                 firstBlock = filterBlocks[0];

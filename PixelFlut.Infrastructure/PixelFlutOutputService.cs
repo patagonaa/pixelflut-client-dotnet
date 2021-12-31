@@ -17,7 +17,8 @@ namespace PixelFlut.Infrastructure
 
         public PixelFlutTcpOutputService(EndPoint endPoint)
         {
-            this.client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            this.client = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            this.client.DualMode = true;
             this.endPoint = endPoint;
         }
 
@@ -53,7 +54,8 @@ namespace PixelFlut.Infrastructure
             {
                 Thread.Sleep(1000);
                 this.client?.Dispose();
-                this.client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                this.client = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+                this.client.DualMode = true;
                 this.client.Connect(this.endPoint);
             }
         }
@@ -64,8 +66,9 @@ namespace PixelFlut.Infrastructure
             {
                 var bytes = new byte[1000];
                 int receivedBytes;
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                using (var socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp))
                 {
+                    socket.DualMode = true;
                     Console.WriteLine("getting size");
                     socket.Connect(this.endPoint);
                     socket.Send(Encoding.UTF8.GetBytes("SIZE\n"));
