@@ -18,6 +18,8 @@ namespace PixelFlut.Demo.Effects
         private Size _videoSize;
         private byte[] _frame;
         private OutputPixel[] _pixels;
+        private SemaphoreSlim _readWaitSemaphore = new SemaphoreSlim(0, 1);
+        private SemaphoreSlim _writeWaitSemaphore = new SemaphoreSlim(1, 1);
 
         public VideoPlayback(string filePath, Size? overrideSize = null)
         {
@@ -54,8 +56,7 @@ namespace PixelFlut.Demo.Effects
                              options.Resize(_videoSize);
                          }
                      })
-                    .CancellableThrough(out var cancelCallback);
-                _cts.Token.Register(cancelCallback);
+                    .CancellableThrough(_cts.Token);
 
                 //fire and forget
                 await args.ProcessAsynchronously(true);
@@ -64,39 +65,31 @@ namespace PixelFlut.Demo.Effects
 
         private async Task OnFrame(byte[] frame)
         {
-            while (_frame != null)
-            {
-                await Task.Yield();
-            }
-
+            await _writeWaitSemaphore.WaitAsync();
             _frame = frame;
+            _readWaitSemaphore.Release();
         }
 
         protected override async Task<OutputFrame> TickInternal()
         {
-            while (_frame == null)
-            {
-                await Task.Yield();
-            }
+            await _readWaitSemaphore.WaitAsync();
 
-            if (_frame != null)
+            var frame = _frame;
+            _pixels = new OutputPixel[_videoSize.Width * _videoSize.Height];
+            int i = 0;
+            for (int y = 0; y < _videoSize.Height; y++)
             {
-                var frame = _frame;
-                _frame = null;
-                _pixels = new OutputPixel[_videoSize.Width * _videoSize.Height];
-                int i = 0;
-                for (int y = 0; y < _videoSize.Height; y++)
+                for (int x = 0; x < _videoSize.Width; x++)
                 {
-                    for (int x = 0; x < _videoSize.Width; x++)
-                    {
-                        var argb = unchecked((uint)(frame[i * 3] | frame[i * 3 + 1] << 8 | frame[i * 3 + 2] << 16 | 0xFF << 24));
+                    int pixelIdx = i * 3;
+                    var argb = unchecked((uint)(frame[pixelIdx] | frame[pixelIdx + 1] << 8 | frame[pixelIdx + 2] << 16 | 0xFF << 24));
 
-                        _pixels[i] = new OutputPixel(x, y, argb);
+                    _pixels[i] = new OutputPixel(x, y, argb);
 
-                        i++;
-                    }
+                    i++;
                 }
             }
+            _writeWaitSemaphore.Release();
 
             var outputPixels = _pixels;
             return new OutputFrame(0, 0, outputPixels, -1, false);
@@ -142,7 +135,7 @@ namespace PixelFlut.Demo.Effects
                 catch (TaskCanceledException)
                 {
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Console.WriteLine("Error in Video Playback: " + ex);
                 }

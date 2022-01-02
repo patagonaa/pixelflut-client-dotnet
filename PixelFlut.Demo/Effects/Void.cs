@@ -10,7 +10,7 @@ namespace PixelFlut.Demo.Effects
         {
             var height = CanvasSize.Height;
             var width = CanvasSize.Width;
-            var color = unchecked((uint)Color.White.ToArgb());
+            var color = unchecked((uint)Color.Black.ToArgb());
 
             var toReturn = new OutputPixel[width * height];
             var i = 0;
