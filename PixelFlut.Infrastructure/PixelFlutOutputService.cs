@@ -1,8 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -14,12 +11,14 @@ namespace PixelFlut.Infrastructure
     {
         private Socket client;
         private readonly EndPoint endPoint;
+        private readonly IPAddress _bindIp;
 
-        public PixelFlutTcpOutputService(EndPoint endPoint)
+        public PixelFlutTcpOutputService(EndPoint endPoint, IPAddress bindIp = null)
         {
             this.client = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
             this.client.DualMode = true;
             this.endPoint = endPoint;
+            _bindIp = bindIp;
         }
 
         public int Output(ArraySegment<byte> rendered)
@@ -54,10 +53,17 @@ namespace PixelFlut.Infrastructure
             {
                 Thread.Sleep(1000);
                 this.client?.Dispose();
-                this.client = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
-                this.client.DualMode = true;
-                this.client.Connect(this.endPoint);
+                Connect();
             }
+        }
+
+        private void Connect()
+        {
+            this.client = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            this.client.DualMode = true;
+            if (_bindIp != null)
+                this.client.Bind(new IPEndPoint(_bindIp, 0));
+            this.client.Connect(this.endPoint);
         }
 
         public Size GetSize()
